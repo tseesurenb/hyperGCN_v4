@@ -123,7 +123,7 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
                 final_u_emb, final_i_emb = torch.split(out, (n_users, n_items))
                 recall,  prec, ncdg = ut.get_metrics(final_u_emb, final_i_emb, n_users, n_items, train_df, test_df, topK, device)
             
-            f1 = (2 * recall * prec / (recall + prec) if (recall + prec) != 0 else 0.0
+            f1 = (2 * recall * prec / (recall + prec)) if (recall + prec) != 0 else 0.0
                 
             losses['bpr_loss'].append(round(np.mean(bpr_losses),4))
             losses['reg_loss'].append(round(np.mean(reg_losses),4))
