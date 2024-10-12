@@ -1,0 +1,11 @@
+Step 0:
+	u-i interaction
+
+Step 1:
+	split dataset: train & test
+	encode ids
+
+Step 2:
+	make adj_list -> u_id: [pos_ids], [neg_ids]
+	make edge_index -> uu and ii edges defined by top-k similarities
+	make edge_attr -> similarity score
