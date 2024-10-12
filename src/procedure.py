@@ -15,7 +15,7 @@ from data_prep import get_edge_index, create_uuii_adjmat
 import time
 import sys
 
-from rust_utils import neg_uniform_sample
+#from rust_utils import neg_uniform_sample
 
 # ANSI escape codes for bold and red
 br = "\033[1;31m"
