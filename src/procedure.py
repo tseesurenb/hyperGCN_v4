@@ -114,7 +114,7 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
             total_losses.append(total_loss.item())
             
             # Update the description of the outer progress bar with batch information
-            pbar.set_description(f'{config['model']}({g_seed:2}){exp_n:2} | #edges {len(edge_index[0]):6} | epoch({epochs}) {epoch} | batch({n_batches}) {b_i:3} | neg_sample_time({neg_sample_time:.2}) | Loss {total_loss.item():.4f}')
+            pbar.set_description(f"{config['model']}({g_seed:2}){exp_n:2} | #edges {len(edge_index[0]):6} | epoch({epochs}) {epoch} | batch({n_batches}) {b_i:3} | neg_sample_time({neg_sample_time:.2}) | Loss {total_loss.item():.4f}")
             
         if epoch % config["epochs_per_eval"] == 0:
             model.eval()
