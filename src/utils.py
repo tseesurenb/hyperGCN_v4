@@ -151,7 +151,6 @@ def get_metrics(user_Embed_wts, item_Embed_wts, n_users, n_items, train_df, test
     
     dcg = np.sum(dcg_matrix * (1. / np.log2(np.arange(2, K + 2))), axis=1)
     
-
     # Handle cases where idcg == 0 to avoid division by zero
     idcg[idcg == 0.] = 1.
 

@@ -10,6 +10,7 @@ from torch import nn
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import add_self_loops, degree
 from torch_geometric.utils import degree
+from torch_geometric.nn.conv.gcn_conv import gcn_norm
 
 # HyperGCN Convolutional Layer
 class hyperGCN(MessagePassing):
@@ -19,19 +20,22 @@ class hyperGCN(MessagePassing):
         self.edge_weight_func = edge_weight_func
         self.graph_norms = None
         self.edge_attrs = None
+        self.add_self_loops = False
             
     def forward(self, x, edge_index, edge_attrs):
         
         if self.graph_norms is None:
 
             # Compute normalization
-            from_, to_ = edge_index
-            deg = degree(to_, x.size(0), dtype=x.dtype)
-            deg_inv_sqrt = deg.pow(-0.5)
-            deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
-            norm = deg_inv_sqrt[from_] * deg_inv_sqrt[to_]
+            #from_, to_ = edge_index
+            #deg = degree(to_, x.size(0), dtype=x.dtype)
+            #deg_inv_sqrt = deg.pow(-0.5)
+            #deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
+            #norm = deg_inv_sqrt[from_] * deg_inv_sqrt[to_]
+            
+            self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
           
-            self.graph_norms = norm
+            self.graph_norms = self.edge_index_norm[1]
             
             if self.edge_weight_func == 'exp' and edge_attrs != None:
               self.edge_attrs = torch.exp(edge_attrs)
