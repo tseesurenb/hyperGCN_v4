@@ -73,20 +73,15 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
     
         total_losses, bpr_losses, reg_losses  = [], [], []
         
-        start = time.time()
-        
-        
         # Shuffle the DataFrame
-        train_df = train_df.sample(frac=1).reset_index(drop=True)
+        #train_df = train_df.sample(frac=1).reset_index(drop=True)
 
         if config['n_neg_samples'] == 1:
             #S = neg_uniform_sample(train_array, train_neg_adj_list, n_users)
             S = ut.neg_uniform_sample(train_df, adj_list, item_sim_dict, n_users)
         else:
             S = ut.multiple_neg_uniform_sample(train_df, adj_list, n_users)
-        
-        neg_sample_time = time.time() - start
-        
+         
         users = torch.Tensor(S[:, 0]).long().to(device)
         pos_items = torch.Tensor(S[:, 1]).long().to(device)
         neg_items = torch.Tensor(S[:, 2]).long().to(device)

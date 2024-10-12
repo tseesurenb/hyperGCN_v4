@@ -267,25 +267,12 @@ def neg_uniform_sample(train_df, adj_list, item_sim_dict, n_usr):
     #neg_items = np.array([adj_list[u]['neg_items'][np.random.randint(0, len(adj_list[u]['neg_items']))] for u in users])
                 
     if config['neg_sampling']:
-        #neg_items = np.array([np.random.choice(list(set(item_sim_dict[i]) - set(adj_list[u]['pos_items'])), 1, replace=True)
-        #              if len(set(item_sim_dict[i]) - set(adj_list[u]['pos_items'])) > 0 else np.array([-1])
-        #              for u, i in zip(users, pos_items)])
-        
-        # neg_items = np.array([list(set(item_sim_dict[i]) - set(adj_list[u]['pos_items']))[np.random.randint(0, len(list(set(item_sim_dict[i]) - set(adj_list[u]['pos_items']))))]
-        #               if len(set(item_sim_dict[i]) - set(adj_list[u]['pos_items'])) > 0 else np.array([-1])
-        #               for u, i in zip(users, pos_items)])
         
         neg_items = np.array([
             list(set(item_sim_dict[i]) - set(adj_list[u]['pos_items']))[np.random.randint(0, len(set(item_sim_dict[i]) - set(adj_list[u]['pos_items'])))]
             if len(set(item_sim_dict[i]) - set(adj_list[u]['pos_items'])) > 0 else -1
             for u, i in zip(users, pos_items)
         ])
-        
-        # neg_items = np.array([
-        #     np.random.choice(list(set(item_sim_dict[i]) - set(adj_list[u]['pos_items'])), 1)[0]
-        #     if len(set(item_sim_dict[i]) - set(adj_list[u]['pos_items'])) > 0 else -1
-        #     for u, i in zip(users, pos_items)
-        # ])
         
     else:
         #neg_items = np.array([np.random.choice(adj_list[u]['neg_items'], 1, replace=False) for u in users])
