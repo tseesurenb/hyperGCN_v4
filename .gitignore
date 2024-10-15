@@ -2,5 +2,7 @@
 *.pt
 data/
 models/
+models/plots/
+models/results/
 pre_proc/
 backup/
