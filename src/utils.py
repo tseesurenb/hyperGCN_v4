@@ -33,7 +33,7 @@ def print_metrics(recalls, precs, f1s, ncdg, max_indices, stats):
     if config['edge'] == 'bi':
         print(f"   MODEL: {br}{config['model']}{rs} | EDGE TYPE: {br}{config['edge']}{rs} | #LAYERS: {br}{config['layers']}{rs} | BATCH_SIZE: {br}{config['batch_size']}{rs} | DECAY: {br}{config['decay']}{rs} | EPOCHS: {br}{config['epochs']}{rs} | Shuffle: {br}{config['shuffle']}{rs} | Test Ratio: {br}{config['test_ratio']}{rs} ")
     else:
-        print(f"   MODEL: {br}{config['model']}{rs} | EDGE TYPE: {br}{config['edge']}{rs} | #LAYERS: {br}{config['layers']}{rs} | SIM (mode-{config['e_weight_func']}, self-{config['self_loop']}): {br}u-{config['u_sim']}(topK {config['u_top_k']}), i-{config['i_sim']}(topK {config['i_top_k']}){rs} | BATCH_SIZE: {br}{config['batch_size']}{rs} | DECAY: {br}{config['decay']}{rs} | EPOCHS: {br}{config['epochs']}{rs} | Shuffle: {br}{config['shuffle']}{rs} | Test Ratio: {br}{config['test_ratio']}{rs}")
+        print(f"   MODEL: {br}{config['model']}{rs} | EDGE TYPE: {br}{config['edge']}{rs} | #LAYERS: {br}{config['layers']}{rs} | SIM (mode-{config['e_attr_mode']}, self-{config['self_loop']}): {br}u-{config['u_sim']}(topK {config['u_top_k']}), i-{config['i_sim']}(topK {config['i_top_k']}){rs} | BATCH_SIZE: {br}{config['batch_size']}{rs} | DECAY: {br}{config['decay']}{rs} | EPOCHS: {br}{config['epochs']}{rs} | Shuffle: {br}{config['shuffle']}{rs} | Test Ratio: {br}{config['test_ratio']}{rs}")
 
     metrics = [("Recall", recalls), 
            ("Prec", precs), 
@@ -431,6 +431,7 @@ def plot_results(plot_name, num_exp, all_bi_losses, all_bi_metrics, all_knn_loss
     plt.savefig(plot_name + '_' + timestamp +'.png')  # Save plot to file
     
 def plot_results(plot_name, num_exp, all_losses, all_metrics):
+    
     plt.figure(figsize=(14, 5))  # Adjust figure size as needed
     
     num_test_epochs = len(all_losses[0]['total_loss'])

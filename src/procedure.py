@@ -25,7 +25,9 @@ bb = "\033[1;34m"
 rs = "\033[0m"
  
 def compute_bpr_loss(users, users_emb, pos_emb, neg_emb, user_emb0, pos_emb0, neg_emb0, margin = 0.5):
-     
+    
+    margin = config['margin']
+    
     if config['n_neg_samples'] == 1:
         neg_reg_loss = neg_emb0.norm(2).pow(2)
     else:
@@ -43,7 +45,7 @@ def compute_bpr_loss(users, users_emb, pos_emb, neg_emb, user_emb0, pos_emb0, ne
     
     if config['n_neg_samples'] == 1:
         neg_scores = torch.mul(users_emb, neg_emb).sum(dim=1)
-        bpr_loss = torch.mean(F.softplus(neg_scores - pos_scores))
+        bpr_loss = torch.mean(F.softplus(neg_scores - pos_scores) + margin)  # Using softplus for stability
     else:
         # Neg scores for each user and N negative items: [batch_size, N]
         neg_scores = torch.mul(users_emb.unsqueeze(1), neg_emb).sum(dim=2)
@@ -64,6 +66,9 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
     losses = { 'bpr_loss': [], 'reg_loss': [], 'total_loss': [] }
     metrics = { 'recall': [], 'precision': [], 'f1': [], 'ncdg': [] }
     
+    max_ncdg = 0.0
+    max_epoch = 0
+    
     #train_array = train_df.to_numpy()
     neg_sample_time = 0.0
     
@@ -74,7 +79,7 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
         total_losses, bpr_losses, reg_losses  = [], [], []
         
         # Shuffle the DataFrame
-        #train_df = train_df.sample(frac=1).reset_index(drop=True)
+        train_df = train_df.sample(frac=1).reset_index(drop=True)
 
         if config['n_neg_samples'] == 1:
             #S = neg_uniform_sample(train_array, train_neg_adj_list, n_users)
@@ -94,13 +99,13 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
         model.train()
         for (b_i, (b_users, b_pos, b_neg)) in enumerate(ut.minibatch(users, pos_items, neg_items, batch_size=b_size)):
                                      
-            optimizer.zero_grad()
             u_emb, pos_emb, neg_emb, u_emb0,  pos_emb0, neg_emb0 = model.encode_minibatch(b_users, b_pos, b_neg, edge_index, edge_attrs)
             bpr_loss, reg_loss = compute_bpr_loss(b_users, u_emb, pos_emb, neg_emb, u_emb0,  pos_emb0, neg_emb0)
             
             reg_loss = decay * reg_loss
             total_loss = bpr_loss + reg_loss
             
+            optimizer.zero_grad()
             total_loss.backward()
             optimizer.step()
 
@@ -109,7 +114,7 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
             total_losses.append(total_loss.item())
             
             # Update the description of the outer progress bar with batch information
-            pbar.set_description(f"{config['model']}({g_seed:2}){exp_n:2} | #edges {len(edge_index[0]):6} | epoch({epochs}) {epoch} | batch({n_batches}) {b_i:3} | neg_sample_time({neg_sample_time:.2}) | Loss {total_loss.item():.4f}")
+            pbar.set_description(f"{config['model']}({g_seed:2}) | #ed {len(edge_index[0]):6} | ep({epochs}) {epoch} | ba({n_batches}) {b_i:3} | n_sample_t({neg_sample_time:.2}) | loss {total_loss.item():.4f}")
             
         if epoch % config["epochs_per_eval"] == 0:
             model.eval()
@@ -129,7 +134,12 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
             metrics['f1'].append(round(f1,4))
             metrics['ncdg'].append(round(ncdg,4))
             
-            pbar.set_postfix_str(f"prec {br}{prec:.4f}{rs} | recall {br}{recall:.4f}{rs} | ncdg {br}{ncdg:.4f}{rs}")
+            if ncdg > max_ncdg:
+                max_ncdg = ncdg
+                max_epoch = epoch
+                #torch.save(model.state_dict(), f"models/{config['model']}_{g_seed}_{exp_n}.pt")
+            
+            pbar.set_postfix_str(f"prec {br}{prec:.4f}{rs} | recall {br}{recall:.4f}{rs} | ncdg {br}{ncdg:.4f} ({max_ncdg:.4f} at {max_epoch}) {rs}")
             pbar.refresh()
 
     return (losses, metrics)
@@ -151,9 +161,9 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
         print(f"{br}Trainset{rs} | #users: {N_USERS}, #items: {N_ITEMS}, #interactions: {len(_train_df)}")
         print(f" {br}Testset{rs} | #users: {_test_df['user_id'].nunique()}, #items: {_test_df['item_id'].nunique()}, #interactions: {len(_test_df)}")
       
-    adj_list = ut.make_adj_list(_train_df)
+    adj_list = ut.make_adj_list(_train_df) # adj_list is a user dictionary with a list of positive items (pos_items) and negative items (neg_items)
      
-    if config['edge'] == 'bi':
+    if config['edge'] == 'bi': # edge from a bipartite graph
         
         u_t = torch.LongTensor(_train_df.user_id)
         i_t = torch.LongTensor(_train_df.item_id) + N_USERS
@@ -166,7 +176,7 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
         edge_index = bi_edge_index.to(device)
         edge_attrs = None
          
-    if config['edge'] == 'knn':
+    if config['edge'] == 'knn': # edge from a k-nearest neighbor or similarity graph
         
         knn_train_adj_df, item_sim_dict = create_uuii_adjmat(_train_df, verbose) 
         knn_edge_index, knn_edge_attrs = get_edge_index(knn_train_adj_df)
@@ -175,7 +185,7 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
         edge_index = knn_edge_index.to(device)
         edge_attrs = torch.tensor(knn_edge_attrs).to(device)
     
-    cf_model = RecSysGNN(model=config['model'], emb_dim=config['emb_dim'],  n_layers=config['layers'], n_users=N_USERS, n_items=N_ITEMS, edge_weight_func = config['e_weight_func']).to(device)
+    cf_model = RecSysGNN(model=config['model'], emb_dim=config['emb_dim'],  n_layers=config['layers'], n_users=N_USERS, n_items=N_ITEMS, edge_attr_mode = config['e_attr_mode'], self_loop=config['self_loop']).to(device)
     opt = torch.optim.Adam(cf_model.parameters(), lr=config['lr'])
 
     losses, metrics = train_and_eval(cf_model, 

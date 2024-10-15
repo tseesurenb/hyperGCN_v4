@@ -26,10 +26,12 @@ def parse_args():
     parser.add_argument('--u_top_k', type=int, default=20)
     parser.add_argument('--i_top_k', type=int, default=20)
     parser.add_argument('--self_loop', type=bool, default=False)
-    parser.add_argument('--e_weight_func', type=str, default='exp')
+    parser.add_argument('--e_attr_mode', type=str, default='exp')
     parser.add_argument('--shuffle', type=bool, default=False)
     parser.add_argument('--neg_sampling', type=bool, default=False)
     parser.add_argument('--n_neg_samples', type=int, default=1)
     parser.add_argument('--save_sim_mat', type=bool, default=False)
+    parser.add_argument('--save_res', type=bool, default=True)
+    parser.add_argument('--margin', type=float, default=0.0, help="the margin in BPR loss")
     
     return parser.parse_args()

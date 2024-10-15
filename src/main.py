@@ -2,7 +2,7 @@
 Created on Sep 1, 2024
 Pytorch Implementation of hyperGCN: Hyper Graph Convolutional Networks for Collaborative Filtering
 '''
-
+import os
 import torch
 import torch.backends
 import torch.mps
@@ -51,8 +51,24 @@ for seed in seeds:
     
     exp_n += 1
 
+file_name = f"{config['model']}_{device}_{config['seed']}_{config['dataset']}_{config['batch_size']}__{config['layers']}_{config['epochs']}_{config['edge']}"
+
+# Make sure the directory exists before saving
+save_dir = f"models/results"
+if config['save_res']:
+    os.makedirs(save_dir, exist_ok=True)
+    
+# save all the data and then load it to plot
+if config['save_res']:
+    file_1 = f"{save_dir}/{file_name}_all_losses.npy"
+    file_2 = f"{save_dir}/{file_name}_all_metrics.npy"
+    
+    np.save(file_1, all_losses)
+    np.save(file_2, all_metrics)
+    
 print_metrics(recalls, precs, f1s, ncdg, max(max_indices), stats=dataset_stats)
 
-file_name = f"models/{config['model']}_{device}_{config['seed']}_{config['dataset']}_{config['batch_size']}__{config['layers']}_{config['epochs']}_{config['edge']}"
-plot_results(file_name, exp_n, all_losses, all_metrics)
+plot_save_dir = f"models/plots/{file_name}"
+
+plot_results(plot_save_dir, exp_n, all_losses, all_metrics)
 
