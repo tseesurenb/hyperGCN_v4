@@ -3,6 +3,7 @@ Created on Sep 1, 2024
 Pytorch Implementation of hyperGCN: Hyper Graph Convolutional Networks for Collaborative Filtering
 '''
 
+import os
 import torch
 import numpy as np
 import torch.nn.functional as F
@@ -95,7 +96,36 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
             users, pos_items, neg_items = ut.shuffle(users, pos_items, neg_items)
         
         n_batches = len(users) // b_size + 1
-                            
+        
+        if epoch % config["epochs_per_eval"] == 0:
+            model.eval()
+            with torch.no_grad():
+                _, out = model(edge_index, edge_attrs)
+                final_u_emb, final_i_emb = torch.split(out, (n_users, n_items))
+                recall,  prec, ncdg = ut.get_metrics(final_u_emb, final_i_emb, n_users, n_items, train_df, test_df, topK, device)
+            
+            f1 = (2 * recall * prec / (recall + prec)) if (recall + prec) != 0 else 0.0
+                
+            #losses['bpr_loss'].append(round(np.mean(bpr_losses),4))
+            #losses['reg_loss'].append(round(np.mean(reg_losses),4))
+            #losses['total_loss'].append(round(np.mean(total_losses),4))
+            
+            losses['bpr_loss'].append(round(np.mean(bpr_losses), 4) if bpr_losses else np.nan)
+            losses['reg_loss'].append(round(np.mean(reg_losses), 4) if reg_losses else np.nan)
+            losses['total_loss'].append(round(np.mean(total_losses), 4) if total_losses else np.nan)
+            
+            metrics['recall'].append(round(recall,4))
+            metrics['precision'].append(round(prec,4))
+            metrics['f1'].append(round(f1,4))
+            metrics['ncdg'].append(round(ncdg,4))
+            
+            if ncdg > max_ncdg:
+                max_ncdg = ncdg
+                max_epoch = epoch
+            
+            pbar.set_postfix_str(f"prec {br}{prec:.4f}{rs} | recall {br}{recall:.4f}{rs} | ncdg {br}{ncdg:.4f} ({max_ncdg:.4f} at {max_epoch}) {rs}")
+            pbar.refresh()
+                                
         model.train()
         for (b_i, (b_users, b_pos, b_neg)) in enumerate(ut.minibatch(users, pos_items, neg_items, batch_size=b_size)):
                                      
@@ -116,32 +146,6 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
             # Update the description of the outer progress bar with batch information
             pbar.set_description(f"{config['model']}({g_seed:2}) | #ed {len(edge_index[0]):6} | ep({epochs}) {epoch} | ba({n_batches}) {b_i:3} | n_sample_t({neg_sample_time:.2}) | loss {total_loss.item():.4f}")
             
-        if epoch % config["epochs_per_eval"] == 0:
-            model.eval()
-            with torch.no_grad():
-                _, out = model(edge_index, edge_attrs)
-                final_u_emb, final_i_emb = torch.split(out, (n_users, n_items))
-                recall,  prec, ncdg = ut.get_metrics(final_u_emb, final_i_emb, n_users, n_items, train_df, test_df, topK, device)
-            
-            f1 = (2 * recall * prec / (recall + prec)) if (recall + prec) != 0 else 0.0
-                
-            losses['bpr_loss'].append(round(np.mean(bpr_losses),4))
-            losses['reg_loss'].append(round(np.mean(reg_losses),4))
-            losses['total_loss'].append(round(np.mean(total_losses),4))
-            
-            metrics['recall'].append(round(recall,4))
-            metrics['precision'].append(round(prec,4))
-            metrics['f1'].append(round(f1,4))
-            metrics['ncdg'].append(round(ncdg,4))
-            
-            if ncdg > max_ncdg:
-                max_ncdg = ncdg
-                max_epoch = epoch
-                #torch.save(model.state_dict(), f"models/{config['model']}_{g_seed}_{exp_n}.pt")
-            
-            pbar.set_postfix_str(f"prec {br}{prec:.4f}{rs} | recall {br}{recall:.4f}{rs} | ncdg {br}{ncdg:.4f} ({max_ncdg:.4f} at {max_epoch}) {rs}")
-            pbar.refresh()
-
     return (losses, metrics)
 
 def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', verbose = -1):
@@ -187,6 +191,11 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
     
     cf_model = RecSysGNN(model=config['model'], emb_dim=config['emb_dim'],  n_layers=config['layers'], n_users=N_USERS, n_items=N_ITEMS, edge_attr_mode = config['e_attr_mode'], self_loop=config['self_loop']).to(device)
     opt = torch.optim.Adam(cf_model.parameters(), lr=config['lr'])
+    
+    model_file_path = f"./models/params/{config['model']}_{device}_{g_seed}_{config['dataset']}_{config['batch_size']}__{config['layers']}_{config['epochs']}_{config['edge']}"
+    
+    if config['load'] and os.path.exists(model_file_path):
+        cf_model.load_state_dict(torch.load(model_file_path, weights_only=True))
 
     losses, metrics = train_and_eval(cf_model, 
                                      opt, 
@@ -200,4 +209,8 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
                                      exp_n, 
                                      g_seed)
    
+
+    # Assume 'model' is your PyTorch model
+    torch.save(cf_model.state_dict(), model_file_path)
+
     return losses, metrics

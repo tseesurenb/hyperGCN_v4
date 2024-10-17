@@ -54,6 +54,16 @@ class hyperGCN(MessagePassing):
             return norm.view(-1, 1) * (x_j * attr.view(-1, 1))
         else:
             return norm.view(-1, 1) * x_j   
+    
+    # def message(self, x_j, norm, attr):
+    #     if attr is not None:
+    #         # Calculate attention weights using softmax
+    #         attn_weights = torch.softmax(attr, dim=0)  # Normalize edge attributes to create attention weights
+            
+    #         # Multiply messages by attention weights
+    #         return norm.view(-1, 1) * (x_j * attn_weights.view(-1, 1))
+    #     else:
+    #         return norm.view(-1, 1) * x_j
 
 # LightGCN Convolutional Layer     
 class LightGCNConv(MessagePassing):

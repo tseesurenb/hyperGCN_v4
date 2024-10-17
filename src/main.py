@@ -15,6 +15,16 @@ from world import config
 # STEP 1: set the device
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+# Make sure the directory exists before saving
+res_dir = f"models/results"
+load_dir = f"models/params"
+plot_dir = f"models/plots"
+    
+os.makedirs(res_dir, exist_ok=True)
+os.makedirs(load_dir, exist_ok=True)
+os.makedirs(plot_dir, exist_ok=True)
+    
+
 # STEP 2: Load the data
 train_df, test_df = dp.load_data_from_adj_list(dataset = config['dataset'])
 
@@ -53,22 +63,18 @@ for seed in seeds:
 
 file_name = f"{config['model']}_{device}_{config['seed']}_{config['dataset']}_{config['batch_size']}__{config['layers']}_{config['epochs']}_{config['edge']}"
 
-# Make sure the directory exists before saving
-save_dir = f"models/results"
-if config['save_res']:
-    os.makedirs(save_dir, exist_ok=True)
-    
+
 # save all the data and then load it to plot
 if config['save_res']:
-    file_1 = f"{save_dir}/{file_name}_all_losses.npy"
-    file_2 = f"{save_dir}/{file_name}_all_metrics.npy"
+    file_1 = f"{res_dir}/{file_name}_all_losses.npy"
+    file_2 = f"{res_dir}/{file_name}_all_metrics.npy"
     
     np.save(file_1, all_losses)
     np.save(file_2, all_metrics)
     
 print_metrics(recalls, precs, f1s, ncdg, max(max_indices), stats=dataset_stats)
 
-plot_save_dir = f"models/plots/{file_name}"
+plot_save_dir = f"{plot_dir}/{file_name}"
 
 plot_results(plot_save_dir, exp_n, all_losses, all_metrics)
 
