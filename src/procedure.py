@@ -179,6 +179,8 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
         
         edge_index = bi_edge_index.to(device)
         edge_attrs = None
+        
+        item_sim_dict = None
          
     if config['edge'] == 'knn': # edge from a k-nearest neighbor or similarity graph
         
