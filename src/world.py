@@ -30,6 +30,7 @@ config['self_loop'] = bool(args.self_loop)
 config['e_attr_mode'] = args.e_attr_mode
 config['shuffle'] = args.shuffle
 config['neg_sampling'] = args.neg_sampling
+config['full_sample'] = args.full_sample
 config['n_neg_samples'] = args.n_neg_samples
 config['save_sim_mat'] = args.save_sim_mat
 config['save_res'] = args.save_res

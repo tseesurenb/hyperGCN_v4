@@ -84,7 +84,10 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
 
         if config['n_neg_samples'] == 1:
             #S = neg_uniform_sample(train_array, train_neg_adj_list, n_users)
-            S = ut.neg_uniform_sample(train_df, adj_list, item_sim_dict, n_users)
+            if config['full_sample']:
+                S = ut.full_uniform_sample(train_df, adj_list, n_users)
+            else:
+                S = ut.neg_uniform_sample(train_df, adj_list, item_sim_dict, n_users)
         else:
             S = ut.multiple_neg_uniform_sample(train_df, adj_list, n_users)
          
