@@ -24,15 +24,7 @@ class hyperGCN(MessagePassing):
             
     def forward(self, x, edge_index, edge_attrs):
         
-        if self.graph_norms is None:
-
-            # Compute normalization
-            #from_, to_ = edge_index
-            #deg = degree(to_, x.size(0), dtype=x.dtype)
-            #deg_inv_sqrt = deg.pow(-0.5)
-            #deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
-            #norm = deg_inv_sqrt[from_] * deg_inv_sqrt[to_]
-            
+        if self.graph_norms is None:            
             self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
           
             self.graph_norms = self.edge_index_norm[1]
@@ -53,7 +45,15 @@ class hyperGCN(MessagePassing):
         if attr != None:
             return norm.view(-1, 1) * (x_j * attr.view(-1, 1))
         else:
-            return norm.view(-1, 1) * x_j   
+            return norm.view(-1, 1) * x_j
+    
+    # def update(self, aggr_out, x, edge_index, edge_attrs):
+    #     # Update step: Take cumulative product of weights for nodes
+    #     if edge_attrs is not None:
+    #         # Multiply the node embeddings by the cumulative edge weights
+    #         return aggr_out * self.edge_attrs.view(-1, 1)
+    #     else:
+    #         return aggr_out
     
     # def message(self, x_j, norm, attr):
     #     if attr is not None:
@@ -64,25 +64,6 @@ class hyperGCN(MessagePassing):
     #         return norm.view(-1, 1) * (x_j * attn_weights.view(-1, 1))
     #     else:
     #         return norm.view(-1, 1) * x_j
-
-# LightGCN Convolutional Layer     
-class LightGCNConv(MessagePassing):
-    def __init__(self, **kwargs):  
-        super().__init__(aggr='add')
-            
-    def forward(self, x, edge_index, edge_attrs):
-        # Compute normalization
-        from_, to_ = edge_index
-        deg = degree(to_, x.size(0), dtype=x.dtype)
-        deg_inv_sqrt = deg.pow(-0.5)
-        deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
-        norm = deg_inv_sqrt[from_] * deg_inv_sqrt[to_]
-
-        # Start propagating messages (no update after aggregation)
-        return self.propagate(edge_index, x=x, norm=norm)
-
-    def message(self, x_j, norm):
-        return norm.view(-1, 1) * x_j
       
 # NGCF Convolutional Layer
 class NGCFConv(MessagePassing):
@@ -169,7 +150,27 @@ class knnNGCFConv(MessagePassing):
   def message(self, x_j, x_i, norm, attr):
     return norm.view(-1, 1) * (self.lin_1(x_j) + self.lin_2(x_j * x_i)) * attr.view(-1, 1) 
 
-  
+
+# LightGCN Convolutional Layer     
+class LightGCNConv(MessagePassing):
+    def __init__(self, **kwargs):  
+        super().__init__(aggr='add')
+            
+    def forward(self, x, edge_index, edge_attrs):
+        # Compute normalization
+        from_, to_ = edge_index
+        deg = degree(to_, x.size(0), dtype=x.dtype)
+        deg_inv_sqrt = deg.pow(-0.5)
+        deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
+        norm = deg_inv_sqrt[from_] * deg_inv_sqrt[to_]
+
+        # Start propagating messages (no update after aggregation)
+        return self.propagate(edge_index, x=x, norm=norm)
+
+    def message(self, x_j, norm):
+        return norm.view(-1, 1) * x_j
+
+      
 class RecSysGNN(nn.Module):
   def __init__(
       self,

@@ -168,6 +168,8 @@ def get_metrics(user_Embed_wts, item_Embed_wts, n_users, n_items, train_df, test
     return total_recall, total_precision, total_ndcg
 
 def set_seed(seed):
+    random.seed(seed)
+    
     np.random.seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)

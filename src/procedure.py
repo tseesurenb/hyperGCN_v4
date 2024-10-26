@@ -16,6 +16,9 @@ from data_prep import get_edge_index, create_uuii_adjmat
 import time
 import sys
 
+#import torch._dynamo
+#torch._dynamo.config.suppress_errors = True
+
 #from rust_utils import neg_uniform_sample
 
 # ANSI escape codes for bold and red
@@ -196,6 +199,9 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
     
     cf_model = RecSysGNN(model=config['model'], emb_dim=config['emb_dim'],  n_layers=config['layers'], n_users=N_USERS, n_items=N_ITEMS, edge_attr_mode = config['e_attr_mode'], self_loop=config['self_loop']).to(device)
     opt = torch.optim.Adam(cf_model.parameters(), lr=config['lr'])
+    
+    #cf_model.compile(optimizer=opt, loss='bpr')
+    #cf_model = torch.compile(cf_model)
     
     model_file_path = f"./models/params/{config['model']}_{device}_{g_seed}_{config['dataset']}_{config['batch_size']}__{config['layers']}_{config['epochs']}_{config['edge']}"
     
