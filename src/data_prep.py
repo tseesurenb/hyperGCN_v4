@@ -40,8 +40,8 @@ def create_uuii_adjmat(df, verbose=-1):
     
     u_sim = config['u_sim']
     i_sim = config['i_sim']
-    u_top_k = config['u_top_k']
-    i_top_k = config['i_top_k']
+    u_top_k = config['u_K']
+    i_top_k = config['i_K']
     self_loop = config['self_loop']
     
     if config['save_sim_mat']:
@@ -171,7 +171,7 @@ def load_data_from_adj_list(dataset = "lastfm", verbose = 0):
     test_df = None
     df = None
     
-    datasets = ['amazon_book', 'yelp2018', 'lastfm', 'gowalla']
+    datasets = ['amazon_book', 'yelp2018', 'lastfm', 'gowalla', 'itstore']
     
     if dataset not in datasets:
         print(f'{br} The dataset {dataset} is not supported yet !!!{rs}')
@@ -184,12 +184,12 @@ def load_data_from_adj_list(dataset = "lastfm", verbose = 0):
     # Load the entire ratings dataframe into memory
     df = pd.read_csv(train_path, header=0, sep=' ')
     # Select the relevant columns 'asin', 'user_id', 'rating', 'timestamp'
-    train_df = df[['user_id', 'item_id', 'rating', 'timestamp']]
+    train_df = df[['user_id', 'item_id']]
                             
     # Load the entire ratings dataframe into memory
     df = pd.read_csv(test_path, header=0, sep=' ')
     # Select the relevant columns 'asin', 'user_id', 'rating', 'timestamp'
-    test_df = df[['user_id', 'item_id', 'rating', 'timestamp']]
+    test_df = df[['user_id', 'item_id']]
     
     if verbose > 0:
         print(f'{bg}Data loaded for dataset: {dataset} !!!{rs}')

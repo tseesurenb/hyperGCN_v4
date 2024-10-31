@@ -33,7 +33,7 @@ def print_metrics(recalls, precs, f1s, ncdg, max_indices, stats):
     if config['edge'] == 'bi':
         print(f"   MODEL: {br}{config['model']}{rs} | EDGE TYPE: {br}{config['edge']}{rs} | #LAYERS: {br}{config['layers']}{rs} | BATCH_SIZE: {br}{config['batch_size']}{rs} | DECAY: {br}{config['decay']}{rs} | EPOCHS: {br}{config['epochs']}{rs} | Shuffle: {br}{config['shuffle']}{rs} | Test Ratio: {br}{config['test_ratio']}{rs} ")
     else:
-        print(f"   MODEL: {br}{config['model']}{rs} | EDGE TYPE: {br}{config['edge']}{rs} | #LAYERS: {br}{config['layers']}{rs} | SIM (mode-{config['e_attr_mode']}, self-{config['self_loop']}): {br}u-{config['u_sim']}(topK {config['u_top_k']}), i-{config['i_sim']}(topK {config['i_top_k']}){rs} | BATCH_SIZE: {br}{config['batch_size']}{rs} | DECAY: {br}{config['decay']}{rs} | EPOCHS: {br}{config['epochs']}{rs} | Shuffle: {br}{config['shuffle']}{rs} | Test Ratio: {br}{config['test_ratio']}{rs}")
+        print(f"   MODEL: {br}{config['model']}{rs} | EDGE TYPE: {br}{config['edge']}{rs} | #LAYERS: {br}{config['layers']}{rs} | SIM (mode-{config['e_attr_mode']}, self-{config['self_loop']}): {br}u-{config['u_sim']}(topK {config['u_K']}), i-{config['i_sim']}(topK {config['i_K']}){rs} | BATCH_SIZE: {br}{config['batch_size']}{rs} | DECAY: {br}{config['decay']}{rs} | EPOCHS: {br}{config['epochs']}{rs} | Shuffle: {br}{config['shuffle']}{rs} | Test Ratio: {br}{config['test_ratio']}{rs}")
 
     metrics = [("Recall", recalls), 
            ("Prec", precs), 
@@ -66,7 +66,10 @@ def encode_ids(train_df: pd.DataFrame, test_df: pd.DataFrame) -> tuple:
     # Apply transformations to the test DataFrame
     test_df.loc[:, 'user_id'] = le_user.transform(test_df['user_id'].values)
     test_df.loc[:, 'item_id'] = le_item.transform(test_df['item_id'].values)
-    
+        
+    train_df = train_df.astype({'user_id': 'int64', 'item_id': 'int64'})
+    test_df = test_df.astype({'user_id': 'int64', 'item_id': 'int64'})
+        
     return train_df, test_df
 
 def get_metrics(user_Embed_wts, item_Embed_wts, n_users, n_items, train_df, test_df, K, device, batch_size=100):
@@ -84,6 +87,17 @@ def get_metrics(user_Embed_wts, item_Embed_wts, n_users, n_items, train_df, test
     total_ndcg = 0.0
     num_batches = (n_users + batch_size - 1) // batch_size
 
+    # print("\n")
+    # print(f"type of user_id list: {type(train_df['user_id'].values)}")
+    # print(f"type of item_id list: {type(train_df['item_id'].values)}")
+    
+    # print(train_df['user_id'].values)
+    # print(train_df['item_id'].values)
+    
+    # print(train_df['item_id'].isnull().sum())
+    
+    # sys.exit()
+    
     # Prepare interaction tensor for the batch
     i = torch.stack((
         torch.LongTensor(train_df['user_id'].values),

@@ -62,7 +62,7 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
    
     epochs = config['epochs']
     b_size = config['batch_size']
-    topK = config['top_k']
+    topK = config['top_K']
     decay = config['decay']
     n_users = train_df['user_id'].nunique()
     n_items = train_df['item_id'].nunique()
@@ -145,12 +145,12 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
             total_loss.backward()
             optimizer.step()
 
-            bpr_losses.append(bpr_loss.item())
-            reg_losses.append(reg_loss.item())
-            total_losses.append(total_loss.item())
+            bpr_losses.append(bpr_loss.detach().item())
+            reg_losses.append(reg_loss.detach().item())
+            total_losses.append(total_loss.detach().item())
             
             # Update the description of the outer progress bar with batch information
-            pbar.set_description(f"{config['model']}({g_seed:2}) | #ed {len(edge_index[0]):6} | ep({epochs}) {epoch} | ba({n_batches}) {b_i:3} | n_sample_t({neg_sample_time:.2}) | loss {total_loss.item():.4f}")
+            pbar.set_description(f"{config['model']}({g_seed:2}) | #ed {len(edge_index[0]):6} | ep({epochs}) {epoch} | ba({n_batches}) {b_i:3} | n_sample_t({neg_sample_time:.2}) | loss {total_loss.detach().item():.4f}")
             
     return (losses, metrics)
 
@@ -198,11 +198,11 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
         edge_attrs = torch.tensor(knn_edge_attrs).to(device)
     
     cf_model = RecSysGNN(model=config['model'], emb_dim=config['emb_dim'],  n_layers=config['layers'], n_users=N_USERS, n_items=N_ITEMS, edge_attr_mode = config['e_attr_mode'], self_loop=config['self_loop']).to(device)
+    
+    cf_model = torch.compile(cf_model, dynamic=False)
+    
     opt = torch.optim.Adam(cf_model.parameters(), lr=config['lr'])
-    
-    #cf_model.compile(optimizer=opt, loss='bpr')
-    #cf_model = torch.compile(cf_model)
-    
+
     model_file_path = f"./models/params/{config['model']}_{device}_{g_seed}_{config['dataset']}_{config['batch_size']}__{config['layers']}_{config['epochs']}_{config['edge']}"
     
     if config['load'] and os.path.exists(model_file_path):

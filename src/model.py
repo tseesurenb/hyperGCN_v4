@@ -47,14 +47,6 @@ class hyperGCN(MessagePassing):
         else:
             return norm.view(-1, 1) * x_j
     
-    # def update(self, aggr_out, x, edge_index, edge_attrs):
-    #     # Update step: Take cumulative product of weights for nodes
-    #     if edge_attrs is not None:
-    #         # Multiply the node embeddings by the cumulative edge weights
-    #         return aggr_out * self.edge_attrs.view(-1, 1)
-    #     else:
-    #         return aggr_out
-    
     # def message(self, x_j, norm, attr):
     #     if attr is not None:
     #         # Calculate attention weights using softmax
