@@ -199,7 +199,7 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
     
     cf_model = RecSysGNN(model=config['model'], emb_dim=config['emb_dim'],  n_layers=config['layers'], n_users=N_USERS, n_items=N_ITEMS, edge_attr_mode = config['e_attr_mode'], self_loop=config['self_loop']).to(device)
     
-    cf_model = torch.compile(cf_model, dynamic=False)
+    cf_model = torch.compile(cf_model)
     
     opt = torch.optim.Adam(cf_model.parameters(), lr=config['lr'])
 
