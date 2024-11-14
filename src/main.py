@@ -25,10 +25,12 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 res_dir = f"models/results"
 load_dir = f"models/params"
 plot_dir = f"models/plots"
+pred_dir = f"models/preds"
     
 os.makedirs(res_dir, exist_ok=True)
 os.makedirs(load_dir, exist_ok=True)
 os.makedirs(plot_dir, exist_ok=True)
+os.makedirs(pred_dir, exist_ok=True)
     
 
 # STEP 2: Load the data
