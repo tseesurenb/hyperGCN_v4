@@ -241,8 +241,9 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
     # Assume 'model' is your PyTorch model
     torch.save(cf_model.state_dict(), model_file_path)
     # make all predictions for all users and items
-    predictions = get_all_predictions(cf_model, edge_index, edge_attrs, device)
-    #save predictions to a file
-    np.save(f"./models/preds/{config['model']}_{config['dataset']}_{config['batch_size']}__{config['layers']}_{config['edge']}", predictions)
+    if config['save_pred']:
+        predictions = get_all_predictions(cf_model, edge_index, edge_attrs, device)
+        #save predictions to a file
+        np.save(f"./models/preds/{config['model']}_{config['dataset']}_{config['batch_size']}__{config['layers']}_{config['edge']}", predictions)
 
     return losses, metrics

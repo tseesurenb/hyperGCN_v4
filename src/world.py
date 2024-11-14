@@ -34,5 +34,6 @@ config['full_sample'] = args.full_sample
 config['n_neg_samples'] = args.n_neg_samples
 config['save_sim_mat'] = args.save_sim_mat
 config['save_res'] = args.save_res
+config['save_pred'] = args.save_pred
 config['margin'] = args.margin
 config['load'] = args.load
