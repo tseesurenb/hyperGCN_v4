@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import utils as ut
 
 from tqdm import tqdm
-from model import RecSysGNN
+from model import RecSysGNN, get_all_predictions
 from world import config
 from data_prep import get_edge_index, create_uuii_adjmat
 import time
@@ -70,7 +70,26 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
     losses = { 'bpr_loss': [], 'reg_loss': [], 'total_loss': [] }
     metrics = { 'recall': [], 'precision': [], 'f1': [], 'ncdg': [] }
     
+    # change the device if it is mps for dense operation to have no issue
+    #if device == 'mps':
+    #    device = torch.device("cpu")
+    
+    i = torch.stack((
+        torch.LongTensor(train_df['user_id'].values),
+        torch.LongTensor(train_df['item_id'].values)
+    )).to(device)
+    
+    v = torch.ones(len(train_df), dtype=torch.float32).to(device)
+    interactions_t = torch.sparse_coo_tensor(i, v, (n_users, n_items), device=device).to_dense()
+    
+    
+    # set back to the device    
+    #if torch.backends.mps.is_available():
+    #    device = torch.device("mps")
+    
     max_ncdg = 0.0
+    max_recall = 0.0
+    max_prec = 0.0
     max_epoch = 0
     
     #train_array = train_df.to_numpy()
@@ -108,14 +127,10 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
             with torch.no_grad():
                 _, out = model(edge_index, edge_attrs)
                 final_u_emb, final_i_emb = torch.split(out, (n_users, n_items))
-                recall,  prec, ncdg = ut.get_metrics(final_u_emb, final_i_emb, n_users, n_items, train_df, test_df, topK, device)
+                recall,  prec, ncdg = ut.get_metrics(final_u_emb, final_i_emb, test_df, topK, interactions_t, device)
             
             f1 = (2 * recall * prec / (recall + prec)) if (recall + prec) != 0 else 0.0
                 
-            #losses['bpr_loss'].append(round(np.mean(bpr_losses),4))
-            #losses['reg_loss'].append(round(np.mean(reg_losses),4))
-            #losses['total_loss'].append(round(np.mean(total_losses),4))
-            
             losses['bpr_loss'].append(round(np.mean(bpr_losses), 4) if bpr_losses else np.nan)
             losses['reg_loss'].append(round(np.mean(reg_losses), 4) if reg_losses else np.nan)
             losses['total_loss'].append(round(np.mean(total_losses), 4) if total_losses else np.nan)
@@ -127,9 +142,11 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
             
             if ncdg > max_ncdg:
                 max_ncdg = ncdg
+                max_recall = recall
+                max_prec = prec
                 max_epoch = epoch
             
-            pbar.set_postfix_str(f"prec {br}{prec:.4f}{rs} | recall {br}{recall:.4f}{rs} | ncdg {br}{ncdg:.4f} ({max_ncdg:.4f} at {max_epoch}) {rs}")
+            pbar.set_postfix_str(f"prec {br}{prec:.4f}{rs} | recall {br}{recall:.4f}{rs} | ncdg {br}{ncdg:.4f} ({max_ncdg:.4f}, {max_recall:.4f}, {max_prec:.4f} at {max_epoch}) {rs}")
             pbar.refresh()
                                 
         model.train()
@@ -150,7 +167,7 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
             total_losses.append(total_loss.detach().item())
             
             # Update the description of the outer progress bar with batch information
-            pbar.set_description(f"{config['model']}({g_seed:2}) | #ed {len(edge_index[0]):6} | ep({epochs}) {epoch} | ba({n_batches}) {b_i:3} | n_sample_t({neg_sample_time:.2}) | loss {total_loss.detach().item():.4f}")
+            pbar.set_description(f"{config['model']}({g_seed:2}) | #ed {len(edge_index[0]):6} | ep({epochs}) {epoch} | ba({n_batches}) {b_i:3} | loss {total_loss.detach().item():.4f}")
             
     return (losses, metrics)
 
@@ -203,7 +220,7 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
     
     opt = torch.optim.Adam(cf_model.parameters(), lr=config['lr'])
 
-    model_file_path = f"./models/params/{config['model']}_{device}_{g_seed}_{config['dataset']}_{config['batch_size']}__{config['layers']}_{config['epochs']}_{config['edge']}"
+    model_file_path = f"./models/params/{config['model']}_{config['dataset']}_{config['edge']}"
     
     if config['load'] and os.path.exists(model_file_path):
         cf_model.load_state_dict(torch.load(model_file_path, weights_only=True))
@@ -223,5 +240,9 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
 
     # Assume 'model' is your PyTorch model
     torch.save(cf_model.state_dict(), model_file_path)
+    # make all predictions for all users and items
+    predictions = get_all_predictions(cf_model, edge_index, edge_attrs, device)
+    #save predictions to a file
+    np.save(f"./models/preds/{config['model']}_{config['dataset']}_{config['batch_size']}__{config['layers']}_{config['edge']}", predictions)
 
     return losses, metrics

@@ -12,8 +12,14 @@ from utils import print_metrics, set_seed, plot_results
 import data_prep as dp 
 from world import config
 
-# STEP 1: set the device
+
+# STEP 1: set the device    
+#if torch.backends.mps.is_available():
+#   device = torch.device("mps")
+#else:
 device = "cuda" if torch.cuda.is_available() else "cpu"
+
+#print(f"Device: {device}")
 
 # Make sure the directory exists before saving
 res_dir = f"models/results"
@@ -36,7 +42,8 @@ dataset_stats = {'num_users': num_users, 'num_items': num_items,  'num_interacti
 
 # STEP 3: Execute the experiment
 #seeds = [2020, 12, 89, 91, 41]
-seeds = [2020]
+seeds = []
+seeds.append(config['seed'])
 exp_n = 1
 
 recalls, precs, f1s, ncdg, max_indices = [], [], [], [], []

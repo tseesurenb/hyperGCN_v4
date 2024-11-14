@@ -171,7 +171,7 @@ def load_data_from_adj_list(dataset = "lastfm", verbose = 0):
     test_df = None
     df = None
     
-    datasets = ['amazon_book', 'yelp2018', 'lastfm', 'gowalla', 'itstore']
+    datasets = ['amazon_book', 'yelp2018', 'lastfm', 'gowalla', 'itstore', 'ml-1m']
     
     if dataset not in datasets:
         print(f'{br} The dataset {dataset} is not supported yet !!!{rs}')

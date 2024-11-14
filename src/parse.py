@@ -9,7 +9,7 @@ def parse_args():
     parser = argparse.ArgumentParser(prog="tempLGCN", description="Dynamic GCN-based CF recommender")
     parser.add_argument('--model', type=str, default='hyperGCN', help='rec-model, support [LightGCN, NGCF, hyperGCN]')
     parser.add_argument('--dataset', type=str, default='lastfm', help="available datasets: [lastfm, yelp2018, amazon-book]")
-    parser.add_argument('--seed', type=int, default=2002, help='random seed')
+    parser.add_argument('--seed', type=int, default=2020, help='random seed')
     parser.add_argument('--emb_dim', type=int, default=64, help="the embedding size for learning parameters")
     parser.add_argument('--layers', type=int, default=3, help="the layer num of GCN")
     parser.add_argument('--batch_size', type=int, default= 1024, help="the batch size for bpr loss training procedure")

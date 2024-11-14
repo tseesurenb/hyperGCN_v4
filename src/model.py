@@ -6,6 +6,8 @@ Pytorch Implementation of hyperGCN: Hyper Graph Convolutional Networks for Colla
 import torch
 import torch.nn.functional as F
 
+import numpy as np
+
 from torch import nn
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import add_self_loops, degree
@@ -184,7 +186,7 @@ class RecSysGNN(nn.Module):
     self.n_layers = n_layers
     self.emb_dim = emb_dim
     
-    self.embedding = nn.Embedding(self.n_users + self.n_items, self.emb_dim)
+    self.embedding = nn.Embedding(self.n_users + self.n_items, self.emb_dim, dtype=torch.float32)
         
     if self.model == 'NGCF':
       self.convs = nn.ModuleList(NGCFConv(self.emb_dim, dropout=dropout) for _ in range(self.n_layers))
@@ -206,6 +208,8 @@ class RecSysGNN(nn.Module):
     else:
       # Authors of LightGCN report higher results with normal initialization
       nn.init.normal_(self.embedding.weight, std=0.1)
+      #nn.init.normal_(self.embedding.weight, mean=0.0, std=0.1).to(torch.float32)
+
 
   def forward(self, edge_index, edge_attrs):
     emb0 = self.embedding.weight
@@ -235,3 +239,24 @@ class RecSysGNN(nn.Module):
         emb0[pos_items],
         emb0[neg_items]
     )
+    
+  def predict(self, users, items, edge_index, edge_attrs):
+    emb0, out = self(edge_index, edge_attrs)
+    
+    #return torch.matmul(out[users], emb0[items].t())
+    #return torch.matmul(out[users].float(), emb0[items].t())
+    return torch.matmul(out[users], out[items].t())
+
+  
+
+# define a function that compute all users scoring for all items and then save it to a file. later, I can be able to get top-k for a user by user_id
+def get_all_predictions(model, edge_index, edge_attrs, device):
+    model.eval()
+    users = torch.arange(model.n_users).to(device)
+    items = torch.arange(model.n_items).to(device)
+    predictions = model.predict(users, items, edge_index, edge_attrs)
+    return predictions.cpu().detach().numpy()
+  
+# define a function that get top-k items for a user by user_id after sorting the predictions
+def get_top_k(user_id, predictions, k):
+    return np.argsort(predictions[user_id])[::-1][:k]

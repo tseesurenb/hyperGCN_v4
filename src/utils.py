@@ -69,44 +69,39 @@ def encode_ids(train_df: pd.DataFrame, test_df: pd.DataFrame) -> tuple:
         
     train_df = train_df.astype({'user_id': 'int64', 'item_id': 'int64'})
     test_df = test_df.astype({'user_id': 'int64', 'item_id': 'int64'})
+    
+    # Create mappings of original IDs to encoded IDs
+    user_mapping = pd.DataFrame({
+        'original_user_id': le_user.classes_,
+        'encoded_user_id': range(len(le_user.classes_))
+    })
+    item_mapping = pd.DataFrame({
+        'original_item_id': le_item.classes_,
+        'encoded_item_id': range(len(le_item.classes_))
+    })
+    
+    # Save mappings to CSV files
+    user_mapping.to_csv('data/itstore/user_id_mapping.csv', index=False)
+    item_mapping.to_csv('data/itstore/item_id_mapping.csv', index=False)
         
     return train_df, test_df
 
-def get_metrics(user_Embed_wts, item_Embed_wts, n_users, n_items, train_df, test_df, K, device, batch_size=100):
+def get_metrics(user_Embed_wts, item_Embed_wts, test_df, K, interactions_t, device, batch_size=100):
 
+    #if device == 'mps':
+    #    device = torch.device("cpu")
+    
     # Ensure embeddings are on the correct device
     user_Embed_wts = user_Embed_wts.to(device)
     item_Embed_wts = item_Embed_wts.to(device)
 
-    assert n_users == user_Embed_wts.shape[0]
-    assert n_items == item_Embed_wts.shape[0]
+    n_users = user_Embed_wts.shape[0]
 
     # Initialize metrics
     total_recall = 0.0
     total_precision = 0.0
     total_ndcg = 0.0
-    num_batches = (n_users + batch_size - 1) // batch_size
-
-    # print("\n")
-    # print(f"type of user_id list: {type(train_df['user_id'].values)}")
-    # print(f"type of item_id list: {type(train_df['item_id'].values)}")
-    
-    # print(train_df['user_id'].values)
-    # print(train_df['item_id'].values)
-    
-    # print(train_df['item_id'].isnull().sum())
-    
-    # sys.exit()
-    
-    # Prepare interaction tensor for the batch
-    i = torch.stack((
-        torch.LongTensor(train_df['user_id'].values),
-        torch.LongTensor(train_df['item_id'].values)
-    )).to(device)
-    
-    v = torch.ones(len(train_df), dtype=torch.float32).to(device)
-    interactions_t = torch.sparse_coo_tensor(i, v, (n_users, n_items), device=device).to_dense()
-
+        
     # Collect results across batches
     all_topk_relevance_indices = []
     all_user_ids = []
@@ -178,6 +173,9 @@ def get_metrics(user_Embed_wts, item_Embed_wts, n_users, n_items, train_df, test
     total_recall = metrics_df['recall'].mean()
     total_precision = metrics_df['precision'].mean()
     total_ndcg = np.mean(ndcg)
+    
+    #if torch.backends.mps.is_available():
+    #    device = torch.device("mps")
     
     return total_recall, total_precision, total_ndcg
 
