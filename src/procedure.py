@@ -69,11 +69,7 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
     
     losses = { 'bpr_loss': [], 'reg_loss': [], 'total_loss': [] }
     metrics = { 'recall': [], 'precision': [], 'f1': [], 'ncdg': [] }
-    
-    # change the device if it is mps for dense operation to have no issue
-    #if device == 'mps':
-    #    device = torch.device("cpu")
-    
+        
     i = torch.stack((
         torch.LongTensor(train_df['user_id'].values),
         torch.LongTensor(train_df['item_id'].values)
@@ -82,17 +78,11 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
     v = torch.ones(len(train_df), dtype=torch.float32).to(device)
     interactions_t = torch.sparse_coo_tensor(i, v, (n_users, n_items), device=device).to_dense()
     
-    
-    # set back to the device    
-    #if torch.backends.mps.is_available():
-    #    device = torch.device("mps")
-    
     max_ncdg = 0.0
     max_recall = 0.0
     max_prec = 0.0
     max_epoch = 0
     
-    #train_array = train_df.to_numpy()
     neg_sample_time = 0.0
     
     pbar = tqdm(range(epochs), bar_format='{desc}{bar:30} {percentage:3.0f}% | {elapsed}{postfix}', ascii="░❯")
@@ -214,11 +204,24 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
         edge_index = knn_edge_index.to(device)
         edge_attrs = torch.tensor(knn_edge_attrs).to(device)
     
-    cf_model = RecSysGNN(model=config['model'], emb_dim=config['emb_dim'],  n_layers=config['layers'], n_users=N_USERS, n_items=N_ITEMS, edge_attr_mode = config['e_attr_mode'], self_loop=config['self_loop']).to(device)
+    cf_model = RecSysGNN(model=config['model'], 
+                         emb_dim=config['emb_dim'],  
+                         n_layers=config['layers'], 
+                         n_users=N_USERS, 
+                         n_items=N_ITEMS, 
+                         edge_attr_mode = config['e_attr_mode'], 
+                         scale=config['scale'],
+                         self_loop=config['self_loop']).to(device)
     
     #cf_model = torch.compile(cf_model)
     
-    opt = torch.optim.Adam(cf_model.parameters(), lr=config['lr'])
+    #opt = torch.optim.Adam(cf_model.parameters(), lr=config['lr'])
+    
+    opt = torch.optim.Adam([
+        {'params': [param for name, param in cf_model.named_parameters() if name != 'scale'], 'lr': config['lr']},  # Default learning rate
+        {'params': [cf_model.scale], 'lr': config['lr_scale']}  # Smaller learning rate for scale
+    ])
+
 
     model_file_path = f"./models/params/{config['model']}_{config['dataset']}_{config['edge']}"
     

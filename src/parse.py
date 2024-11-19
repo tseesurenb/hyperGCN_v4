@@ -17,6 +17,8 @@ def parse_args():
     parser.add_argument('--epochs_per_eval', type=int,default=10)
     parser.add_argument('--verbose', type=int, default=-1)
     parser.add_argument('--lr', type=float, default=0.001, help="the learning rate")
+    parser.add_argument('--lr_scale', type=float, default=0.1, help="the learning rate")
+    parser.add_argument('--scale', type=float, default=4.0, help="the scale for edge attributes")
     parser.add_argument('--decay', type=float, default=1e-04, help="the weight decay for l2 normalizaton")
     parser.add_argument('--top_K', type=int, default=20, help="@k test list")
     parser.add_argument('--test_ratio', type=float, default=0.2)

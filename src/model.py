@@ -23,8 +23,11 @@ class hyperGCN(MessagePassing):
         self.graph_norms = None
         self.edge_attrs = None
         self.add_self_loops = self_loop
+        
+        # define the scale parameter for edge attributes and set it to 1.0
+        #self.scale = nn.Parameter(torch.tensor(4.0))
             
-    def forward(self, x, edge_index, edge_attrs):
+    def forward(self, x, edge_index, edge_attrs, scale):
         
         if self.graph_norms is None:            
             self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
@@ -32,7 +35,8 @@ class hyperGCN(MessagePassing):
             self.graph_norms = self.edge_index_norm[1]
             
             if self.edge_attr_mode == 'exp' and edge_attrs != None:
-              self.edge_attrs = torch.exp(edge_attrs)
+              self.edge_attrs = torch.exp(scale * edge_attrs)
+              #self.edge_attrs = torch.exp(edge_attrs)
             elif self.edge_attr_mode == 'sig' and edge_attrs != None:
               self.edge_attrs = torch.sigmoid(edge_attrs)
             elif self.edge_attr_mode == 'tan' and edge_attrs != None:
@@ -175,6 +179,7 @@ class RecSysGNN(nn.Module):
       model, # 'NGCF' or 'LightGCN' or 'hyperGCN'
       dropout=0.1, # Only used in NGCF
       edge_attr_mode = None,
+      scale = 1.0,
       self_loop = False
   ):
     super(RecSysGNN, self).__init__()
@@ -185,6 +190,8 @@ class RecSysGNN(nn.Module):
     self.n_items = n_items
     self.n_layers = n_layers
     self.emb_dim = emb_dim
+    
+    self.scale = nn.Parameter(torch.tensor(scale))
     
     self.embedding = nn.Embedding(self.n_users + self.n_items, self.emb_dim, dtype=torch.float32)
         
@@ -217,7 +224,7 @@ class RecSysGNN(nn.Module):
 
     emb = emb0
     for conv in self.convs:
-      emb = conv(x=emb, edge_index=edge_index, edge_attrs=edge_attrs)
+      emb = conv(x=emb, edge_index=edge_index, edge_attrs=edge_attrs, scale = self.scale)
       embs.append(emb)
       
     out = (
