@@ -81,8 +81,8 @@ def encode_ids(train_df: pd.DataFrame, test_df: pd.DataFrame) -> tuple:
     })
     
     # Save mappings to CSV files
-    user_mapping.to_csv('data/itstore/user_id_mapping.csv', index=False)
-    item_mapping.to_csv('data/itstore/item_id_mapping.csv', index=False)
+    user_mapping.to_csv(f"data/{config['dataset']}/user_id_mapping.csv", index=False)
+    item_mapping.to_csv(f"data/{config['dataset']}/item_id_mapping.csv", index=False)
         
     return train_df, test_df
 

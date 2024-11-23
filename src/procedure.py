@@ -136,7 +136,7 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
                 max_prec = prec
                 max_epoch = epoch
             
-            pbar.set_postfix_str(f"prec {br}{prec:.4f}{rs} | recall {br}{recall:.4f}{rs} | ncdg {br}{ncdg:.4f} ({max_ncdg:.4f}, {max_recall:.4f}, {max_prec:.4f} at {max_epoch}) {rs}")
+            pbar.set_postfix_str(f"prec {br}{prec:.4f}{rs} | recall {br}{recall:.4f}{rs} | ncdg {br}{ncdg:.4f} ({max_ncdg:.4f}, {max_recall:.4f}, {max_prec:.4f}, {model.scale.item():.4f} at {max_epoch}) {rs}")
             pbar.refresh()
                                 
         model.train()
@@ -215,12 +215,12 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
     
     #cf_model = torch.compile(cf_model)
     
-    #opt = torch.optim.Adam(cf_model.parameters(), lr=config['lr'])
+    opt = torch.optim.Adam(cf_model.parameters(), lr=config['lr'])
     
-    opt = torch.optim.Adam([
-        {'params': [param for name, param in cf_model.named_parameters() if name != 'scale'], 'lr': config['lr']},  # Default learning rate
-        {'params': [cf_model.scale], 'lr': config['lr_scale']}  # Smaller learning rate for scale
-    ])
+    # opt = torch.optim.Adam([
+    #     {'params': [param for name, param in cf_model.named_parameters() if name != 'scale'], 'lr': config['lr']},  # Default learning rate
+    #     {'params': [cf_model.scale], 'lr': config['lr_scale']}  # Much bigger learning rate for scale
+    # ])
 
 
     model_file_path = f"./models/params/{config['model']}_{config['dataset']}_{config['edge']}"

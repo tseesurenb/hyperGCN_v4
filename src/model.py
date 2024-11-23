@@ -35,6 +35,14 @@ class hyperGCN(MessagePassing):
             self.graph_norms = self.edge_index_norm[1]
             
             if self.edge_attr_mode == 'exp' and edge_attrs != None:
+              
+              #src, dst = edge_index
+              #scale_src = scale[src]  # Scale for source nodes
+              #scale_dst = scale[dst]  # Scale for destination nodes
+            
+              # Combine source and destination scales (e.g., average or product)
+              #mid_scale = (scale_src + scale_dst) / 2.0
+            
               self.edge_attrs = torch.exp(scale * edge_attrs)
               #self.edge_attrs = torch.exp(edge_attrs)
             elif self.edge_attr_mode == 'sig' and edge_attrs != None:
@@ -154,7 +162,7 @@ class LightGCNConv(MessagePassing):
     def __init__(self, **kwargs):  
         super().__init__(aggr='add')
             
-    def forward(self, x, edge_index, edge_attrs):
+    def forward(self, x, edge_index, edge_attrs, scale):
         # Compute normalization
         from_, to_ = edge_index
         deg = degree(to_, x.size(0), dtype=x.dtype)
@@ -191,8 +199,10 @@ class RecSysGNN(nn.Module):
     self.n_layers = n_layers
     self.emb_dim = emb_dim
     
+    # Initialize scale parameters for users and items
     self.scale = nn.Parameter(torch.tensor(scale))
-    
+    #self.scale = nn.Parameter(torch.ones(self.n_users + self.n_items) * scale)
+
     self.embedding = nn.Embedding(self.n_users + self.n_items, self.emb_dim, dtype=torch.float32)
         
     if self.model == 'NGCF':
