@@ -77,10 +77,14 @@ def create_uuii_adjmat(df, verbose=-1):
         user_user_sim_matrix, _ = sim.cosine_sim(user_item_matrix, top_k=u_top_k, self_loop = self_loop, verbose=verbose)
     elif u_sim == 'jac':
         user_user_sim_matrix, _ = sim.jaccard_sim(user_item_matrix, top_k=u_top_k, self_loop = self_loop, verbose=verbose)
-    else: # mixed similarity
+    elif u_sim == 'mix+': # mixed similarity
         cos_user_user_sim_matrix, _ = sim.cosine_sim(user_item_matrix, top_k=u_top_k, self_loop = self_loop, verbose=verbose)
         jac_user_user_sim_matrix, _ = sim.jaccard_sim(user_item_matrix, top_k=u_top_k, self_loop = self_loop, verbose=verbose)
         user_user_sim_matrix = (cos_user_user_sim_matrix + jac_user_user_sim_matrix)
+    elif u_sim == 'mix*': # mixed similarity
+        cos_user_user_sim_matrix, _ = sim.cosine_sim(user_item_matrix, top_k=u_top_k, self_loop = self_loop, verbose=verbose)
+        jac_user_user_sim_matrix, _ = sim.jaccard_sim(user_item_matrix, top_k=u_top_k, self_loop = self_loop, verbose=verbose)
+        user_user_sim_matrix = (cos_user_user_sim_matrix * jac_user_user_sim_matrix)
         
     if verbose > 0:
         print('The user-user similarity matrix was created.')
@@ -90,10 +94,15 @@ def create_uuii_adjmat(df, verbose=-1):
         item_item_sim_matrix, full_ii_matrix = sim.cosine_sim(user_item_matrix.T, top_k=i_top_k, self_loop = config['self_loop'], verbose=verbose)
     elif i_sim == 'jac': # Jaccard similarity
         item_item_sim_matrix, full_ii_matrix = sim.jaccard_sim(user_item_matrix.T, top_k=i_top_k, self_loop = config['self_loop'], verbose=verbose)
-    else: # mixed similarity
+    elif i_sim == 'mix+': # mixed similarity
         cos_item_item_sim_matrix, full_ii_matrix = sim.cosine_sim(user_item_matrix.T, top_k=i_top_k, self_loop = config['self_loop'], verbose=verbose)
         jac_item_item_sim_matrix, full_ii_matrix = sim.jaccard_sim(user_item_matrix.T, top_k=i_top_k, self_loop = config['self_loop'], verbose=verbose)
         item_item_sim_matrix = (cos_item_item_sim_matrix + jac_item_item_sim_matrix)
+    elif i_sim == 'mix*': # mixed similarity
+        cos_item_item_sim_matrix, full_ii_matrix = sim.cosine_sim(user_item_matrix.T, top_k=i_top_k, self_loop = config['self_loop'], verbose=verbose)
+        jac_item_item_sim_matrix, full_ii_matrix = sim.jaccard_sim(user_item_matrix.T, top_k=i_top_k, self_loop = config['self_loop'], verbose=verbose)
+        item_item_sim_matrix = (cos_item_item_sim_matrix * jac_item_item_sim_matrix)
+    
           
     if verbose > 0:
         print('The item-item similarity matrix was created.')

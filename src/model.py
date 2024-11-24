@@ -32,8 +32,8 @@ def edge_attr_drop(edge_index, edge_attr, modify_prob=0.2):
 
     # Modify the selected edge attributes to 1
     new_edge_attr = edge_attr.clone()
-    #new_edge_attr[mask] = 1.0
-    new_edge_attr[mask] = 0.0
+    new_edge_attr[mask] = 1.0
+    #new_edge_attr[mask] = 0.0
 
     return new_edge_attr
 
@@ -47,9 +47,6 @@ class hyperGCN(MessagePassing):
         self.edge_attrs = None
         self.add_self_loops = self_loop
         self.attr_drop = attr_drop # make edge_attr 0 for 20% of edges
-        
-        # define the scale parameter for edge attributes and set it to 1.0
-        #self.scale = nn.Parameter(torch.tensor(4.0))
             
     def forward(self, x, edge_index, edge_attrs, scale):
         
@@ -212,6 +209,7 @@ class RecSysGNN(nn.Module):
     # Initialize scale parameters for users and items
     self.scale = nn.Parameter(torch.tensor(scale))
     #self.scale = nn.Parameter(torch.ones(self.n_users + self.n_items) * scale)
+    self.scale.requires_grad = True
 
     self.embedding = nn.Embedding(self.n_users + self.n_items, self.emb_dim, dtype=torch.float32)
         
@@ -229,22 +227,23 @@ class RecSysGNN(nn.Module):
     self.init_parameters()
 
   def init_parameters(self):
-    
+        
     if self.model == 'NGCF':
       nn.init.xavier_uniform_(self.embedding.weight, gain=1)
     else:
-      # Authors of LightGCN report higher results with normal initialization
       nn.init.normal_(self.embedding.weight, std=0.1)
-      #nn.init.normal_(self.embedding.weight, mean=0.0, std=0.1).to(torch.float32)
-
 
   def forward(self, edge_index, edge_attrs):
+    
+    scale = self.scale
+    
     emb0 = self.embedding.weight
     embs = [emb0]
     
+    
     emb = emb0
     for conv in self.convs:
-      emb = conv(x=emb, edge_index=edge_index, edge_attrs=edge_attrs, scale = self.scale)
+      emb = conv(x=emb, edge_index=edge_index, edge_attrs=edge_attrs, scale = scale)
       embs.append(emb)
       
     out = (
@@ -252,11 +251,11 @@ class RecSysGNN(nn.Module):
       else torch.mean(torch.stack(embs, dim=0), dim=0)
     )
         
-    return emb0, out
+    return emb0, out, scale
 
 
   def encode_minibatch(self, users, pos_items, neg_items, edge_index, edge_attrs):
-    emb0, out = self(edge_index, edge_attrs)
+    emb0, out, scale = self(edge_index, edge_attrs)
     
     return (
         out[users], 
@@ -264,17 +263,14 @@ class RecSysGNN(nn.Module):
         out[neg_items],
         emb0[users],
         emb0[pos_items],
-        emb0[neg_items]
+        emb0[neg_items],
+        scale
     )
     
   def predict(self, users, items, edge_index, edge_attrs):
-    emb0, out = self(edge_index, edge_attrs)
-    
-    #return torch.matmul(out[users], emb0[items].t())
-    #return torch.matmul(out[users].float(), emb0[items].t())
+    emb0, out, _ = self(edge_index, edge_attrs)    
     return torch.matmul(out[users], out[items].t())
 
-  
 
 # define a function that compute all users scoring for all items and then save it to a file. later, I can be able to get top-k for a user by user_id
 def get_all_predictions(model, edge_index, edge_attrs, device):

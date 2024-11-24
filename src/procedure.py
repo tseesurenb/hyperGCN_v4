@@ -28,7 +28,7 @@ bg = "\033[1;32m"
 bb = "\033[1;34m"
 rs = "\033[0m"
  
-def compute_bpr_loss(users, users_emb, pos_emb, neg_emb, user_emb0, pos_emb0, neg_emb0, margin = 0.5):
+def compute_bpr_loss(users, users_emb, pos_emb, neg_emb, user_emb0, pos_emb0, neg_emb0, scale, margin = 0.5):
     
     margin = config['margin']
     
@@ -41,7 +41,7 @@ def compute_bpr_loss(users, users_emb, pos_emb, neg_emb, user_emb0, pos_emb0, ne
     reg_loss = (1 / 2) * (
         user_emb0.norm(2).pow(2) + 
         pos_emb0.norm(2).pow(2)  +
-        neg_reg_loss
+        neg_reg_loss #+ scale.norm(2).pow(2)
     ) / float(len(users))
     
     # Compute positive and negative scores
@@ -115,7 +115,7 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
         if epoch % config["epochs_per_eval"] == 0:
             model.eval()
             with torch.no_grad():
-                _, out = model(edge_index, edge_attrs)
+                _, out, _ = model(edge_index, edge_attrs)
                 final_u_emb, final_i_emb = torch.split(out, (n_users, n_items))
                 recall,  prec, ncdg = ut.get_metrics(final_u_emb, final_i_emb, test_df, topK, interactions_t, device)
             
@@ -142,8 +142,8 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
         model.train()
         for (b_i, (b_users, b_pos, b_neg)) in enumerate(ut.minibatch(users, pos_items, neg_items, batch_size=b_size)):
                                      
-            u_emb, pos_emb, neg_emb, u_emb0,  pos_emb0, neg_emb0 = model.encode_minibatch(b_users, b_pos, b_neg, edge_index, edge_attrs)
-            bpr_loss, reg_loss = compute_bpr_loss(b_users, u_emb, pos_emb, neg_emb, u_emb0,  pos_emb0, neg_emb0)
+            u_emb, pos_emb, neg_emb, u_emb0,  pos_emb0, neg_emb0, scale = model.encode_minibatch(b_users, b_pos, b_neg, edge_index, edge_attrs)
+            bpr_loss, reg_loss = compute_bpr_loss(b_users, u_emb, pos_emb, neg_emb, u_emb0,  pos_emb0, neg_emb0, scale)
             
             reg_loss = decay * reg_loss
             total_loss = bpr_loss + reg_loss
