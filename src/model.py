@@ -14,7 +14,7 @@ from torch_geometric.utils import add_self_loops, degree
 from torch_geometric.utils import degree
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
 
-def edge_attr_modify(edge_index, edge_attr, modify_prob=0.2):
+def edge_attr_drop(edge_index, edge_attr, modify_prob=0.2):
     """
     Randomly modifies edge attributes to 1.
 
@@ -53,19 +53,22 @@ class hyperGCN(MessagePassing):
     def forward(self, x, edge_index, edge_attrs, scale):
         
         if self.graph_norms is None:
-            # Compute normalization  
-            self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
-            self.graph_norms = self.edge_index_norm[1]
-                
-        if self.edge_attr_mode == 'exp' and edge_attrs != None:            
-          self.edge_attrs = torch.exp(scale * edge_attrs)
-          #self.edge_attrs = torch.exp(edge_attrs)
-        elif self.edge_attr_mode == 'sig' and edge_attrs != None:
-          self.edge_attrs = torch.sigmoid(edge_attrs)
-        elif self.edge_attr_mode == 'tan' and edge_attrs != None:
-          self.edge_attrs = torch.tanh(edge_attrs)
-        else:
-          self.edge_attrs = None
+          # Compute normalization  
+          self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
+          self.graph_norms = self.edge_index_norm[1]
+              
+          if self.edge_attr_mode == 'exp' and edge_attrs != None:            
+            self.edge_attrs = torch.exp(scale * edge_attrs)
+            #self.edge_attrs = torch.exp(edge_attrs)
+          elif self.edge_attr_mode == 'sig' and edge_attrs != None:
+            self.edge_attrs = torch.sigmoid(edge_attrs)
+          elif self.edge_attr_mode == 'tan' and edge_attrs != None:
+            self.edge_attrs = torch.tanh(edge_attrs)
+          else:
+            self.edge_attrs = None
+          
+          
+        self.edge_attrs = edge_attr_drop(edge_index, self.edge_attrs, 0.2)
         
         # Start propagating messages (no update after aggregation)
         return self.propagate(edge_index, x=x, norm=self.graph_norms, attr = self.edge_attrs)
@@ -239,7 +242,7 @@ class RecSysGNN(nn.Module):
     
     edge_drop_ratio = 0.2
     
-    edge_attrs = edge_attr_modify(edge_index, edge_attrs, edge_drop_ratio)
+    edge_attrs = edge_attr_drop(edge_index, edge_attrs, edge_drop_ratio)
     
     emb = emb0
     for conv in self.convs:
