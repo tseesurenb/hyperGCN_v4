@@ -14,6 +14,28 @@ from torch_geometric.utils import add_self_loops, degree
 from torch_geometric.utils import degree
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
 
+def edge_attr_modify(edge_index, edge_attr, modify_prob=0.2):
+    """
+    Randomly modifies edge attributes to 1.
+
+    Parameters:
+        edge_index (torch.Tensor): The edge index tensor of shape [2, num_edges].
+        edge_attr (torch.Tensor): The edge attributes tensor of shape [num_edges, ...].
+        modify_prob (float): Probability of modifying an edge attribute to 1.
+
+    Returns:
+        new_edge_attr (torch.Tensor): Modified edge attributes.
+    """
+
+    num_edges = edge_index.size(1)
+    mask = torch.rand(num_edges) < modify_prob
+
+    # Modify the selected edge attributes to 1
+    new_edge_attr = edge_attr.clone()
+    new_edge_attr[mask] = 1.0
+
+    return new_edge_attr
+
 # HyperGCN Convolutional Layer
 class hyperGCN(MessagePassing):
     def __init__(self, edge_attr_mode = 'exp', self_loop = False, **kwargs):  
@@ -23,34 +45,27 @@ class hyperGCN(MessagePassing):
         self.graph_norms = None
         self.edge_attrs = None
         self.add_self_loops = self_loop
+        self.edge_drop = 0.2 # make edge_attr 0 for 20% of edges
         
         # define the scale parameter for edge attributes and set it to 1.0
         #self.scale = nn.Parameter(torch.tensor(4.0))
             
     def forward(self, x, edge_index, edge_attrs, scale):
         
-        if self.graph_norms is None:            
+        if self.graph_norms is None:
+            # Compute normalization  
             self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
-          
             self.graph_norms = self.edge_index_norm[1]
-            
-            if self.edge_attr_mode == 'exp' and edge_attrs != None:
-              
-              #src, dst = edge_index
-              #scale_src = scale[src]  # Scale for source nodes
-              #scale_dst = scale[dst]  # Scale for destination nodes
-            
-              # Combine source and destination scales (e.g., average or product)
-              #mid_scale = (scale_src + scale_dst) / 2.0
-            
-              self.edge_attrs = torch.exp(scale * edge_attrs)
-              #self.edge_attrs = torch.exp(edge_attrs)
-            elif self.edge_attr_mode == 'sig' and edge_attrs != None:
-              self.edge_attrs = torch.sigmoid(edge_attrs)
-            elif self.edge_attr_mode == 'tan' and edge_attrs != None:
-              self.edge_attrs = torch.tanh(edge_attrs)
-            else:
-              self.edge_attrs = None
+                
+        if self.edge_attr_mode == 'exp' and edge_attrs != None:            
+          self.edge_attrs = torch.exp(scale * edge_attrs)
+          #self.edge_attrs = torch.exp(edge_attrs)
+        elif self.edge_attr_mode == 'sig' and edge_attrs != None:
+          self.edge_attrs = torch.sigmoid(edge_attrs)
+        elif self.edge_attr_mode == 'tan' and edge_attrs != None:
+          self.edge_attrs = torch.tanh(edge_attrs)
+        else:
+          self.edge_attrs = None
         
         # Start propagating messages (no update after aggregation)
         return self.propagate(edge_index, x=x, norm=self.graph_norms, attr = self.edge_attrs)
@@ -60,17 +75,7 @@ class hyperGCN(MessagePassing):
             return norm.view(-1, 1) * (x_j * attr.view(-1, 1))
         else:
             return norm.view(-1, 1) * x_j
-    
-    # def message(self, x_j, norm, attr):
-    #     if attr is not None:
-    #         # Calculate attention weights using softmax
-    #         attn_weights = torch.softmax(attr, dim=0)  # Normalize edge attributes to create attention weights
-            
-    #         # Multiply messages by attention weights
-    #         return norm.view(-1, 1) * (x_j * attn_weights.view(-1, 1))
-    #     else:
-    #         return norm.view(-1, 1) * x_j
-      
+          
 # NGCF Convolutional Layer
 class NGCFConv(MessagePassing):
   def __init__(self, emb_dim, dropout, bias=True, **kwargs):  
@@ -231,7 +236,11 @@ class RecSysGNN(nn.Module):
   def forward(self, edge_index, edge_attrs):
     emb0 = self.embedding.weight
     embs = [emb0]
-
+    
+    edge_drop_ratio = 0.2
+    
+    edge_attrs = edge_attr_modify(edge_index, edge_attrs, edge_drop_ratio)
+    
     emb = emb0
     for conv in self.convs:
       emb = conv(x=emb, edge_index=edge_index, edge_attrs=edge_attrs, scale = self.scale)
