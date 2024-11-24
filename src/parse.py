@@ -29,6 +29,7 @@ def parse_args():
     parser.add_argument('--i_K', type=int, default=20)
     parser.add_argument('--self_loop', type=bool, default=False)
     parser.add_argument('--e_attr_mode', type=str, default='exp')
+    parser.add_argument('--e_attr_drop', type=float, default=0.2)
     parser.add_argument('--shuffle', type=bool, default=False)
     parser.add_argument('--neg_sampling', type=bool, default=False)
     parser.add_argument('--full_sample', type=bool, default=False)

@@ -30,6 +30,7 @@ config['i_K'] = args.i_K
 config['u_K'] = args.u_K
 config['self_loop'] = bool(args.self_loop)
 config['e_attr_mode'] = args.e_attr_mode
+config['e_attr_drop'] = args.e_attr_drop
 config['shuffle'] = args.shuffle
 config['neg_sampling'] = args.neg_sampling
 config['full_sample'] = args.full_sample

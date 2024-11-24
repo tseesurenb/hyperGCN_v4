@@ -32,20 +32,21 @@ def edge_attr_drop(edge_index, edge_attr, modify_prob=0.2):
 
     # Modify the selected edge attributes to 1
     new_edge_attr = edge_attr.clone()
-    new_edge_attr[mask] = 1.0
+    #new_edge_attr[mask] = 1.0
+    new_edge_attr[mask] = 0.0
 
     return new_edge_attr
 
 # HyperGCN Convolutional Layer
 class hyperGCN(MessagePassing):
-    def __init__(self, edge_attr_mode = 'exp', self_loop = False, **kwargs):  
+    def __init__(self, edge_attr_mode = 'exp', attr_drop = 0.2, self_loop = False, **kwargs):  
         super().__init__(aggr='add')
         
         self.edge_attr_mode = edge_attr_mode
         self.graph_norms = None
         self.edge_attrs = None
         self.add_self_loops = self_loop
-        self.edge_drop = 0.2 # make edge_attr 0 for 20% of edges
+        self.attr_drop = attr_drop # make edge_attr 0 for 20% of edges
         
         # define the scale parameter for edge attributes and set it to 1.0
         #self.scale = nn.Parameter(torch.tensor(4.0))
@@ -68,7 +69,7 @@ class hyperGCN(MessagePassing):
             self.edge_attrs = None
           
           
-        self.edge_attrs = edge_attr_drop(edge_index, self.edge_attrs, 0.2)
+        self.edge_attrs = edge_attr_drop(edge_index, self.edge_attrs, self.attr_drop)
         
         # Start propagating messages (no update after aggregation)
         return self.propagate(edge_index, x=x, norm=self.graph_norms, attr = self.edge_attrs)
@@ -194,6 +195,7 @@ class RecSysGNN(nn.Module):
       n_items,
       model, # 'NGCF' or 'LightGCN' or 'hyperGCN'
       dropout=0.1, # Only used in NGCF
+      attr_drop = 0.2, # Only used in hyperGCN
       edge_attr_mode = None,
       scale = 1.0,
       self_loop = False
@@ -220,7 +222,7 @@ class RecSysGNN(nn.Module):
     elif self.model == 'lightGCN':
       self.convs = nn.ModuleList(LightGCNConv() for _ in range(self.n_layers))
     elif self.model == 'hyperGCN':
-      self.convs = nn.ModuleList(hyperGCN(edge_attr_mode=edge_attr_mode, self_loop=self_loop) for _ in range(self.n_layers))
+      self.convs = nn.ModuleList(hyperGCN(edge_attr_mode=edge_attr_mode, attr_drop=attr_drop, self_loop=self_loop) for _ in range(self.n_layers))
     else:
       raise ValueError('Model must be NGCF, LightGCN or hyperGCN')
 
@@ -239,10 +241,6 @@ class RecSysGNN(nn.Module):
   def forward(self, edge_index, edge_attrs):
     emb0 = self.embedding.weight
     embs = [emb0]
-    
-    edge_drop_ratio = 0.2
-    
-    edge_attrs = edge_attr_drop(edge_index, edge_attrs, edge_drop_ratio)
     
     emb = emb0
     for conv in self.convs:
