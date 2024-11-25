@@ -198,12 +198,6 @@ def pearson_sim(matrix, top_k=20, threshold = 0.0, self_loop=False, verbose=-1):
             top_k_idx = np.argsort(-row_data)[:top_k]
         else:
             top_k_idx = np.argsort(-row_data)
-
-        # # Sort indices based on similarity values (in descending order) and select top K
-        # if row.nnz > top_k:
-        #     top_k_idx = np.argsort(-row_data)[:top_k]
-        # else:
-        #     top_k_idx = np.argsort(-row_data)
         
         # Store the top K similarities
         filtered_data.extend(row_data[top_k_idx])

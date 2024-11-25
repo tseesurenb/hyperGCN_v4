@@ -66,7 +66,7 @@ class hyperGCN(MessagePassing):
             self.edge_attrs = None
           
           
-        self.edge_attrs = edge_attr_drop(edge_index, self.edge_attrs, self.attr_drop)
+        #self.edge_attrs = edge_attr_drop(edge_index, self.edge_attrs, self.attr_drop)
         
         # Start propagating messages (no update after aggregation)
         return self.propagate(edge_index, x=x, norm=self.graph_norms, attr = self.edge_attrs)
