@@ -41,7 +41,7 @@ def compute_bpr_loss(users, users_emb, pos_emb, neg_emb, user_emb0, pos_emb0, ne
     reg_loss = (1 / 2) * (
         user_emb0.norm(2).pow(2) + 
         pos_emb0.norm(2).pow(2)  +
-        neg_reg_loss #+ scale.norm(2).pow(2)
+        neg_reg_loss
     ) / float(len(users))
     
     # Compute positive and negative scores
@@ -49,12 +49,12 @@ def compute_bpr_loss(users, users_emb, pos_emb, neg_emb, user_emb0, pos_emb0, ne
     
     if config['n_neg_samples'] == 1:
         neg_scores = torch.mul(users_emb, neg_emb).sum(dim=1)
-        bpr_loss = torch.mean(F.softplus(neg_scores - pos_scores) + margin)  # Using softplus for stability
+        bpr_loss = torch.mean(F.softplus(scale * (neg_scores - pos_scores)) + margin)  # Using softplus for stability
     else:
         # Neg scores for each user and N negative items: [batch_size, N]
         neg_scores = torch.mul(users_emb.unsqueeze(1), neg_emb).sum(dim=2)
         #mbpr_loss = torch.mean(torch.log(1 + torch.exp(neg_scores - pos_scores.unsqueeze(1))))
-        bpr_loss = torch.mean(F.softplus(neg_scores - pos_scores.unsqueeze(1) + margin))  # Using softplus for stability
+        bpr_loss = torch.mean(F.softplus(scale * (neg_scores - pos_scores.unsqueeze(1)) + margin))  # Using softplus for stability
         
     return bpr_loss, reg_loss
 
@@ -216,12 +216,12 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
     
     #cf_model = torch.compile(cf_model)
     
-    opt = torch.optim.Adam(cf_model.parameters(), lr=config['lr'])
+    #opt = torch.optim.Adam(cf_model.parameters(), lr=config['lr'])
     
-    # opt = torch.optim.Adam([
-    #     {'params': [param for name, param in cf_model.named_parameters() if name != 'scale'], 'lr': config['lr']},  # Default learning rate
-    #     {'params': [cf_model.scale], 'lr': config['lr_scale']}  # Much bigger learning rate for scale
-    # ])
+    opt = torch.optim.Adam([
+         {'params': [param for name, param in cf_model.named_parameters() if name != 'scale'], 'lr': config['lr']},  # Default learning rate
+         {'params': [cf_model.scale], 'lr': config['lr_scale']}  # Much bigger learning rate for scale
+    ])
 
 
     model_file_path = f"./models/params/{config['model']}_{config['dataset']}_{config['edge']}"

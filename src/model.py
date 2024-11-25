@@ -207,7 +207,8 @@ class RecSysGNN(nn.Module):
     self.emb_dim = emb_dim
     
     # Initialize scale parameters for users and items
-    self.scale = nn.Parameter(torch.tensor(scale))
+    #self.scale = nn.Parameter(torch.tensor(scale))
+    self.scale = nn.Parameter(torch.tensor(scale, dtype=torch.float32))
     #self.scale = nn.Parameter(torch.ones(self.n_users + self.n_items) * scale)
     self.scale.requires_grad = True
 

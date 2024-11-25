@@ -136,3 +136,84 @@ def cosine_sim(matrix, top_k=20, self_loop=False, verbose=-1):
     del filtered_data, filtered_rows, filtered_cols
     
     return filtered_similarity_matrix.tocsr(), full_similarity_matrix
+
+
+def pearson_sim(matrix, top_k=20, threshold = 0.0, self_loop=False, verbose=-1):
+       
+    if verbose > 0:
+        print('Computing Pearson similarity by top-k...')
+    
+    # Convert the input matrix to a sparse format (CSR)
+    sparse_matrix = csr_matrix(matrix)
+    
+    # Row-wise mean centering: subtract the mean from non-zero entries
+    row_means = np.array(sparse_matrix.mean(axis=1)).flatten()
+    sparse_matrix.data -= row_means[sparse_matrix.nonzero()[0]]
+    
+    if verbose > 0:
+        print('Data mean-centered for Pearson similarity.')
+
+    # Compute cosine similarity on the mean-centered data
+    similarity_matrix = cosine_similarity(sparse_matrix, dense_output=False)
+    
+    if verbose > 0:
+        print('Pearson similarity computed.')
+    
+    # If self_loop is True, set the diagonal to 1; otherwise, set it to 0
+    if self_loop:
+        similarity_matrix.setdiag(1)
+    else:
+        similarity_matrix.setdiag(0)
+    
+    full_similarity_matrix = similarity_matrix.copy()  # Keep the full similarity matrix
+    
+    # Prepare to filter top K values
+    filtered_data = []
+    filtered_rows = []
+    filtered_cols = []
+    
+    if verbose > 0:
+        print('Filtering top-k values...')
+    
+    pbar = tqdm(range(similarity_matrix.shape[0]), bar_format='{desc}{bar:30} {percentage:3.0f}% | {elapsed}{postfix}', ascii="░❯")
+    pbar.set_description(f'Preparing Pearson similarity matrix | Top-K: {top_k}')
+    
+    for i in pbar:
+        # Get the non-zero elements in the i-th row
+        row = similarity_matrix.getrow(i).tocoo()
+        if row.nnz == 0:
+            continue
+        
+        # Extract indices and values of the row
+        row_data = row.data
+        row_indices = row.col
+        
+        # Apply the threshold filter
+        valid_idx = row_data > threshold
+        row_data = row_data[valid_idx]
+        row_indices = row_indices[valid_idx]
+
+        # Sort indices based on similarity values (in descending order) and select top K
+        if row_data.size > top_k:
+            top_k_idx = np.argsort(-row_data)[:top_k]
+        else:
+            top_k_idx = np.argsort(-row_data)
+
+        # # Sort indices based on similarity values (in descending order) and select top K
+        # if row.nnz > top_k:
+        #     top_k_idx = np.argsort(-row_data)[:top_k]
+        # else:
+        #     top_k_idx = np.argsort(-row_data)
+        
+        # Store the top K similarities
+        filtered_data.extend(row_data[top_k_idx])
+        filtered_rows.extend([i] * len(top_k_idx))
+        filtered_cols.extend(row_indices[top_k_idx])
+
+    # Construct the final filtered sparse matrix
+    filtered_similarity_matrix = coo_matrix((filtered_data, (filtered_rows, filtered_cols)), shape=similarity_matrix.shape)
+    
+    del sparse_matrix, similarity_matrix
+    del filtered_data, filtered_rows, filtered_cols
+    
+    return filtered_similarity_matrix.tocsr(), full_similarity_matrix
