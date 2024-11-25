@@ -49,12 +49,14 @@ def compute_bpr_loss(users, users_emb, pos_emb, neg_emb, user_emb0, pos_emb0, ne
     
     if config['n_neg_samples'] == 1:
         neg_scores = torch.mul(users_emb, neg_emb).sum(dim=1)
-        bpr_loss = torch.mean(F.softplus(scale * (neg_scores - pos_scores)) + margin)  # Using softplus for stability
+        #bpr_loss = torch.mean(F.softplus(scale * (neg_scores - pos_scores)) + margin)  # Using softplus for stability
+        bpr_loss = torch.mean(F.softplus(neg_scores - pos_scores) + margin)  # Using softplus for stability
     else:
         # Neg scores for each user and N negative items: [batch_size, N]
         neg_scores = torch.mul(users_emb.unsqueeze(1), neg_emb).sum(dim=2)
         #mbpr_loss = torch.mean(torch.log(1 + torch.exp(neg_scores - pos_scores.unsqueeze(1))))
-        bpr_loss = torch.mean(F.softplus(scale * (neg_scores - pos_scores.unsqueeze(1)) + margin))  # Using softplus for stability
+        #bpr_loss = torch.mean(F.softplus(scale * (neg_scores - pos_scores.unsqueeze(1)) + margin))  # Using softplus for stability
+        bpr_loss = torch.mean(F.softplus(neg_scores - pos_scores.unsqueeze(1) + margin))  # Using softplus for stability
         
     return bpr_loss, reg_loss
 
