@@ -9,6 +9,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
 from scipy.sparse import csr_matrix
 
+# ANSI escape codes for bold and red
+br = "\033[1;31m"
+b = "\033[1m"
+bg = "\033[1;32m"
+bb = "\033[1;34m"
+rs = "\033[0m"
+
 def jaccard_sim(matrix, top_k=20, self_loop=False, verbose=-1):
     if verbose > 0:
         print('Computing Jaccard similarity by top-k...')
@@ -49,7 +56,7 @@ def jaccard_sim(matrix, top_k=20, self_loop=False, verbose=-1):
         print('Filtering top-k values...')
     
     pbar = tqdm(range(similarity_matrix.shape[0]), bar_format='{desc}{bar:30} {percentage:3.0f}% | {elapsed}{postfix}', ascii="░❯")
-    pbar.set_description(f'Preparing jaccard similarity matrix | Top-K: {top_k}')
+    pbar.set_description(f'Preparing {br}jaccard{rs} similarity matrix | Top-K: {top_k}')
     
     for i in pbar:
         # Get the non-zero elements in the i-th row
@@ -106,7 +113,7 @@ def cosine_sim(matrix, top_k=20, self_loop=False, verbose=-1):
         print('Filtering top-k values...')
     
     pbar = tqdm(range(similarity_matrix.shape[0]), bar_format='{desc}{bar:30} {percentage:3.0f}% | {elapsed}{postfix}', ascii="░❯")
-    pbar.set_description(f'Preparing cosine similarity matrix | Top-K: {top_k}')
+    pbar.set_description(f"Preparing {br} cosine {rs} similarity matrix | Top-K: {top_k}")
     
     for i in pbar:
         # Get the non-zero elements in the i-th row
@@ -176,7 +183,7 @@ def pearson_sim(matrix, top_k=20, threshold = 0.0, self_loop=False, verbose=-1):
         print('Filtering top-k values...')
     
     pbar = tqdm(range(similarity_matrix.shape[0]), bar_format='{desc}{bar:30} {percentage:3.0f}% | {elapsed}{postfix}', ascii="░❯")
-    pbar.set_description(f'Preparing Pearson similarity matrix | Top-K: {top_k}')
+    pbar.set_description(f'Preparing {br}pearson{rs} similarity matrix | Top-K: {top_k}')
     
     for i in pbar:
         # Get the non-zero elements in the i-th row
