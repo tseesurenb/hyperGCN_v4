@@ -121,11 +121,11 @@ def create_uuii_adjmat(df, verbose=-1):
         # Save the sparse matrix to a file
         save_npz(file_path, combined_adjacency)
     
-    item_sim_dict = create_item_similarity_dict(full_ii_matrix)
+    #item_sim_dict = create_item_similarity_dict(full_ii_matrix)
         
-    del user_item_matrix_coo, user_item_matrix, user_user_sim_matrix, item_item_sim_matrix, full_ii_matrix, cos_user_user_sim_matrix, jac_user_user_sim_matrix, cos_item_item_sim_matrix, jac_item_item_sim_matrix
+    del user_item_matrix_coo, user_item_matrix, user_user_sim_matrix, item_item_sim_matrix, cos_user_user_sim_matrix, jac_user_user_sim_matrix, cos_item_item_sim_matrix, jac_item_item_sim_matrix
 
-    return combined_adjacency, item_sim_dict
+    return combined_adjacency, full_ii_matrix #item_sim_dict
 
 def create_item_similarity_dict(item_item_sim_matrix, verbose=0):
     # Convert sparse matrix to COO format to easily access non-zero elements

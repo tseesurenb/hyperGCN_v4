@@ -60,7 +60,7 @@ def compute_bpr_loss(users, users_emb, pos_emb, neg_emb, user_emb0, pos_emb0, ne
         
     return bpr_loss, reg_loss
 
-def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, adj_list, item_sim_dict, device, exp_n, g_seed):
+def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, adj_list, item_sim_mat, device, exp_n, g_seed):
    
     epochs = config['epochs']
     b_size = config['batch_size']
@@ -101,7 +101,7 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
             if config['full_sample']:
                 S = ut.full_uniform_sample(train_df, adj_list, n_users)
             else:
-                S = ut.neg_uniform_sample(train_df, adj_list, item_sim_dict, n_users)
+                S = ut.neg_uniform_sample(train_df, adj_list, item_sim_mat, n_users)
         else:
             S = ut.multiple_neg_uniform_sample(train_df, adj_list, n_users)
          
@@ -195,16 +195,21 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
         edge_index = bi_edge_index.to(device)
         edge_attrs = None
         
-        item_sim_dict = None
+        item_sim_mat = None
          
     if config['edge'] == 'knn': # edge from a k-nearest neighbor or similarity graph
         
-        knn_train_adj_df, item_sim_dict = create_uuii_adjmat(_train_df, verbose) 
+        knn_train_adj_df, item_sim_mat = create_uuii_adjmat(_train_df, verbose)
+        
+        adj_list = ut.calculate_neg_weights(adj_list, item_sim_mat)
+            
         knn_edge_index, knn_edge_attrs = get_edge_index(knn_train_adj_df)
         knn_edge_index = torch.tensor(knn_edge_index).to(device).long()
                     
         edge_index = knn_edge_index.to(device)
         edge_attrs = torch.tensor(knn_edge_attrs).to(device)
+    
+    
     
     cf_model = RecSysGNN(model=config['model'], 
                          emb_dim=config['emb_dim'],  
@@ -238,7 +243,7 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
                                      edge_index, 
                                      edge_attrs,
                                      adj_list,
-                                     item_sim_dict,
+                                     item_sim_mat,
                                      device,
                                      exp_n, 
                                      g_seed)

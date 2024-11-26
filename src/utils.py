@@ -6,6 +6,8 @@ Pytorch Implementation of hyperGCN: Hyper Graph Convolutional Networks for Colla
 import torch
 import random
 import matplotlib
+from tqdm import tqdm
+
 matplotlib.use('Agg')
 
 from datetime import datetime
@@ -208,14 +210,10 @@ def make_adj_list(train_df):
     
     # Compute neg_items by subtracting the pos_items from all_items for each user
     neg_items = pos_items.apply(lambda pos: list(all_items_set.difference(pos)))
-    
-    #if config['top_k_neg']:
-        # calculate similarity between positive and negative items and select the top N similar items in the negative items
-    #    neg_items = get_similar_items(pos_items, neg_items, top_K=config['neg_samples'])
-    
+        
     # Create a dictionary with user_id as the key and a sub-dictionary with both pos_items and neg_items
     full_adj_list_dict = {
-        user_id: {'pos_items': pos_items[user_id], 'neg_items': neg_items[user_id]}
+        user_id: {'pos_items': pos_items[user_id], 'neg_items': neg_items[user_id], 'neg_weights': [1 / len(neg_items[user_id])] * len(neg_items[user_id])}
         for user_id in pos_items.index
     }
 
@@ -276,22 +274,19 @@ def neg_uniform_sample(train_df, adj_list, item_sim_dict, n_usr):
     interactions = train_df.to_numpy()
     users = interactions[:, 0].astype(int)
     pos_items = interactions[:, 1].astype(int)
-    
-    # original negative sampling
-    #neg_items = np.array([adj_list[u]['neg_items'][np.random.randint(0, len(adj_list[u]['neg_items']))] for u in users])
                 
-    if config['neg_sampling']:
-        
+    if config['weighted_neg_sampling']:
         neg_items = np.array([
-            list(set(item_sim_dict[i]) - set(adj_list[u]['pos_items']))[np.random.randint(0, len(set(item_sim_dict[i]) - set(adj_list[u]['pos_items'])))]
-            if len(set(item_sim_dict[i]) - set(adj_list[u]['pos_items'])) > 0 else -1
-            for u, i in zip(users, pos_items)
-        ])
-        
+                        np.random.choice(
+                            adj_list[u]['neg_items'],  # Negative items for user `u`
+                            p=adj_list[u]['neg_weights']  # Corresponding weights for negative items
+                        )
+                        for u in users
+                    ]) 
     else:
-        #neg_items = np.array([np.random.choice(adj_list[u]['neg_items'], 1, replace=False) for u in users])
-        neg_items = np.array([adj_list[u]['neg_items'][np.random.randint(0, len(adj_list[u]['neg_items']))] for u in users])
-    
+        neg_items = np.array([random.choice(adj_list[u]['neg_items']) for u in users])
+        
+
     pos_items = [item + n_usr for item in pos_items]
     neg_items = [item + n_usr for item in neg_items]
     
@@ -301,14 +296,80 @@ def neg_uniform_sample(train_df, adj_list, item_sim_dict, n_usr):
     
     return S
 
+def calculate_neg_weights_old(adj_list, items_sim_matrix):
+    # Step 1: calculate similarity between positive and negative items using pearson correlation
+    
+    print('before')
+    print(adj_list[0][['neg_weights']])
+    
+    for u in tqdm(adj_list.keys(), desc="Processing Users"):
+        pos_items = adj_list[u]['pos_items']
+        neg_items = adj_list[u]['neg_items']
+        
+        similarity_matrix = np.zeros((len(pos_items), len(neg_items)))
+        # fill code here, as items_sim_matrix contains the similarity scores between all items
+
+        # Fill the similarity matrix with scores from items_sim_matrix
+        for i, pos_item in enumerate(pos_items):
+            for j, neg_item in enumerate(neg_items):
+                similarity_matrix[i, j] = items_sim_matrix[pos_item, neg_item]
+        
+        # Create weight list for negative items by using the similarity matrix scores
+        weights = np.mean(similarity_matrix, axis=0)
+        adj_list[u]['neg_weights'] = weights
+    
+    # Step 3: return negative items and weights list
+    
+    print('after')
+    print(adj_list[0][['neg_weights']])
+    
+    sys.exit()
+          
+    return adj_list
+
+def calculate_neg_weights(adj_list, items_sim_matrix):
+    # Step 1: calculate similarity between positive and negative items using Pearson correlation
+    
+    for u in tqdm(adj_list.keys(), desc="Processing Users"):
+        pos_items = adj_list[u]['pos_items']
+        neg_items = adj_list[u]['neg_items']
+        
+        # Extract relevant rows and columns from the similarity matrix
+        similarity_matrix = items_sim_matrix[np.ix_(pos_items, neg_items)]
+        
+        # Compute the mean similarity for each negative item
+        weights = np.mean(similarity_matrix, axis=0).flatten()
+        
+        # Normalize weights to sum up to 1
+        if weights.sum() > 0:
+            weights /= weights.sum()
+        else:
+            weights = np.ones_like(weights) / len(weights)  # Handle case where all weights are zero
+
+        
+        # Store the weights in the adjacency list
+        adj_list[u]['neg_weights'] = weights.tolist()[0]
+    
+    # Step 3: return negative items and weights list
+    return adj_list
+
+
 def get_similar_items(pos_items, neg_items, top_K):
+    # Step 1: calculate similarity between positive and negative items using pearson correlation
+    # Step 2: create weight list for negative items by using the similarity matrix scores
+    # Step 3: return negative items and weights list
+    
+    # please generate code for step 1, 2 and 3
+
     # Calculate similarity between positive and negative items
     sim_matrix = sim.cosine_similarity(pos_items, neg_items)
+    #sim_matrix = sim.pearson_similarity(pos_items, neg_items)
     
-    # Get the top K similar items
-    top_neg_items = np.argsort(sim_matrix, axis=1)[:, -top_K:]
+    # Get the top K dissimilar items
+    top_dis_neg_items = np.argsort(sim_matrix, axis=1)[:, :top_K]
+    #top_neg_items = np.argsort(sim_matrix, axis=1)[:, -top_K:]
     
-    return top_neg_items
+    return top_dis_neg_items
 
 def multiple_neg_uniform_sample(train_df, full_adj_list, n_usr):
     interactions = train_df.to_numpy()

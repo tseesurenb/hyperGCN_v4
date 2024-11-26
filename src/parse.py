@@ -31,7 +31,7 @@ def parse_args():
     parser.add_argument('--e_attr_mode', type=str, default='exp')
     parser.add_argument('--e_attr_drop', type=float, default=0.2)
     parser.add_argument('--shuffle', type=bool, default=False)
-    parser.add_argument('--neg_sampling', type=bool, default=False)
+    parser.add_argument('--weighted_neg_sampling', type=bool, default=False)
     parser.add_argument('--full_sample', type=bool, default=False)
     parser.add_argument('--n_neg_samples', type=int, default=1)
     parser.add_argument('--save_sim_mat', type=bool, default=False)
