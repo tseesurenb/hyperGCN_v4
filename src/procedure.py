@@ -92,7 +92,7 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
         train_df = train_df.sample(frac=1).reset_index(drop=True)
 
         if config['samples'] == 1:
-            S = ut.neg_uniform_sample(train_df, adj_list, item_sim_mat, n_users)
+            S = ut.neg_uniform_sample(train_df, adj_list, n_users)
         else:
             S = ut.multiple_neg_uniform_sample(train_df, adj_list, n_users)
          
@@ -192,8 +192,6 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
         
         knn_train_adj_df, item_sim_mat = create_uuii_adjmat(_train_df, verbose)
         
-        adj_list = ut.calculate_neg_weights(_train_df, adj_list, item_sim_mat)
-            
         knn_edge_index, knn_edge_attrs = get_edge_index(knn_train_adj_df)
         knn_edge_index = torch.tensor(knn_edge_index).to(device).long()
                     

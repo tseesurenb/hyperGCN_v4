@@ -213,8 +213,7 @@ def make_adj_list(train_df):
         
     # Create a dictionary with user_id as the key and a sub-dictionary with both pos_items and neg_items
     full_adj_list_dict = {
-        user_id: {'pos_items': pos_items[user_id], 'neg_items': neg_items[user_id], 'neg_weights': [1 / len(neg_items[user_id])] * len(neg_items[user_id])}
-        for user_id in pos_items.index
+        user_id: {'pos_items': pos_items[user_id], 'neg_items': neg_items[user_id]} for user_id in pos_items.index
     }
 
     # Clear unnecessary variables from memory
@@ -222,43 +221,7 @@ def make_adj_list(train_df):
     
     return full_adj_list_dict
 
-
-def neg_uniform_sample_4(train_df, adj_list, item_sim_dict, n_usr, weighted_neg_sampling=False):
-    """
-    Optimized negative sampling function.
-    """
-    # Convert the adjacency list to a dictionary for faster lookups
-    adj_dict = {
-        row[0]: (np.array(row[1]['neg_items']), 
-                 np.array(row[1].get('neg_weights', None))) 
-        for row in adj_list.iterrows()
-    }
-    
-    users = train_df['user_id'].to_numpy()
-    pos_items = train_df['item_id'].to_numpy()
-
-    # Vectorized sampling
-    if weighted_neg_sampling:
-        neg_items = np.array([
-            np.random.choice(adj_dict[u][0], p=adj_dict[u][1])
-            for u in users
-        ])
-    else:
-        neg_items = np.array([
-            np.random.choice(adj_dict[u][0])
-            for u in users
-        ])
-    
-    # Adjust item IDs for output
-    pos_items += n_usr
-    neg_items += n_usr
-
-    # Stack arrays into the final output
-    S = np.column_stack((users, pos_items, neg_items))
-    
-    return S
-
-def neg_uniform_sample(train_df, adj_list, item_sim_dict, n_usr):
+def neg_uniform_sample(train_df, adj_list, n_usr):
 
     interactions = train_df.to_numpy()
     users = interactions[:, 0].astype(int)
