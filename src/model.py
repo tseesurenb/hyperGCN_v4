@@ -15,17 +15,6 @@ from torch_geometric.utils import degree
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
 
 def edge_attr_drop(edge_index, edge_attr, modify_prob=0.2):
-    """
-    Randomly modifies edge attributes to 1.
-
-    Parameters:
-        edge_index (torch.Tensor): The edge index tensor of shape [2, num_edges].
-        edge_attr (torch.Tensor): The edge attributes tensor of shape [num_edges, ...].
-        modify_prob (float): Probability of modifying an edge attribute to 1.
-
-    Returns:
-        new_edge_attr (torch.Tensor): Modified edge attributes.
-    """
 
     num_edges = edge_index.size(1)
     mask = torch.rand(num_edges) < modify_prob
@@ -64,8 +53,7 @@ class hyperGCN(MessagePassing):
             self.edge_attrs = torch.tanh(edge_attrs)
           else:
             self.edge_attrs = None
-          
-          
+                
         #self.edge_attrs = edge_attr_drop(edge_index, self.edge_attrs, self.attr_drop)
         
         # Start propagating messages (no update after aggregation)
@@ -167,17 +155,21 @@ class knnNGCFConv(MessagePassing):
 class LightGCNConv(MessagePassing):
     def __init__(self, **kwargs):  
         super().__init__(aggr='add')
+        
+        self.norm = None
             
     def forward(self, x, edge_index, edge_attrs, scale):
-        # Compute normalization
-        from_, to_ = edge_index
-        deg = degree(to_, x.size(0), dtype=x.dtype)
-        deg_inv_sqrt = deg.pow(-0.5)
-        deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
-        norm = deg_inv_sqrt[from_] * deg_inv_sqrt[to_]
+      
+        if self.norm is None:
+          # Compute normalization
+          from_, to_ = edge_index
+          deg = degree(to_, x.size(0), dtype=x.dtype)
+          deg_inv_sqrt = deg.pow(-0.5)
+          deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
+          self.norm = deg_inv_sqrt[from_] * deg_inv_sqrt[to_]
 
         # Start propagating messages (no update after aggregation)
-        return self.propagate(edge_index, x=x, norm=norm)
+        return self.propagate(edge_index, x=x, norm=self.norm)
 
     def message(self, x_j, norm):
         return norm.view(-1, 1) * x_j
@@ -207,11 +199,8 @@ class RecSysGNN(nn.Module):
     self.emb_dim = emb_dim
     
     # Initialize scale parameters for users and items
-    #self.scale = nn.Parameter(torch.tensor(scale))
     self.scale = nn.Parameter(torch.tensor(scale, dtype=torch.float32))
-    #self.scale = nn.Parameter(torch.ones(self.n_users + self.n_items) * scale)
-    self.scale.requires_grad = True
-
+  
     self.embedding = nn.Embedding(self.n_users + self.n_items, self.emb_dim, dtype=torch.float32)
         
     if self.model == 'NGCF':
@@ -236,15 +225,12 @@ class RecSysGNN(nn.Module):
 
   def forward(self, edge_index, edge_attrs):
     
-    scale = self.scale
-    
     emb0 = self.embedding.weight
     embs = [emb0]
-    
-    
+     
     emb = emb0
     for conv in self.convs:
-      emb = conv(x=emb, edge_index=edge_index, edge_attrs=edge_attrs, scale = scale)
+      emb = conv(x=emb, edge_index=edge_index, edge_attrs=edge_attrs, scale = self.scale)
       embs.append(emb)
       
     out = (
@@ -252,11 +238,11 @@ class RecSysGNN(nn.Module):
       else torch.mean(torch.stack(embs, dim=0), dim=0)
     )
         
-    return emb0, out, scale
+    return emb0, out
 
 
   def encode_minibatch(self, users, pos_items, neg_items, edge_index, edge_attrs):
-    emb0, out, scale = self(edge_index, edge_attrs)
+    emb0, out = self(edge_index, edge_attrs)
     
     return (
         out[users], 
@@ -265,11 +251,10 @@ class RecSysGNN(nn.Module):
         emb0[users],
         emb0[pos_items],
         emb0[neg_items],
-        scale
     )
     
   def predict(self, users, items, edge_index, edge_attrs):
-    emb0, out, _ = self(edge_index, edge_attrs)    
+    emb0, out = self(edge_index, edge_attrs)    
     return torch.matmul(out[users], out[items].t())
 
 

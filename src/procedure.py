@@ -28,11 +28,9 @@ bg = "\033[1;32m"
 bb = "\033[1;34m"
 rs = "\033[0m"
  
-def compute_bpr_loss(users, users_emb, pos_emb, neg_emb, user_emb0, pos_emb0, neg_emb0, scale, margin = 0.5):
+def compute_bpr_loss(users, users_emb, pos_emb, neg_emb, user_emb0, pos_emb0, neg_emb0):
     
-    margin = config['margin']
-    
-    if config['n_neg_samples'] == 1:
+    if config['samples'] == 1:
         neg_reg_loss = neg_emb0.norm(2).pow(2)
     else:
         neg_reg_loss = neg_emb0.norm(2).pow(2).sum() / neg_emb0.shape[1]  # Sum over negatives and average by N
@@ -45,18 +43,15 @@ def compute_bpr_loss(users, users_emb, pos_emb, neg_emb, user_emb0, pos_emb0, ne
     ) / float(len(users))
     
     # Compute positive and negative scores
-    pos_scores = torch.mul(users_emb, pos_emb).sum(dim=1)  # [batch_size]
+    pos_scores = torch.mul(users_emb, pos_emb).sum(dim=1)
     
-    if config['n_neg_samples'] == 1:
+    if config['samples'] == 1:
         neg_scores = torch.mul(users_emb, neg_emb).sum(dim=1)
-        #bpr_loss = torch.mean(F.softplus(scale * (neg_scores - pos_scores)) + margin)  # Using softplus for stability
-        bpr_loss = torch.mean(F.softplus(neg_scores - pos_scores) + margin)  # Using softplus for stability
+        bpr_loss = torch.mean(F.softplus(neg_scores - pos_scores))  # Using softplus for stability
     else:
         # Neg scores for each user and N negative items: [batch_size, N]
         neg_scores = torch.mul(users_emb.unsqueeze(1), neg_emb).sum(dim=2)
-        #mbpr_loss = torch.mean(torch.log(1 + torch.exp(neg_scores - pos_scores.unsqueeze(1))))
-        #bpr_loss = torch.mean(F.softplus(scale * (neg_scores - pos_scores.unsqueeze(1)) + margin))  # Using softplus for stability
-        bpr_loss = torch.mean(F.softplus(neg_scores - pos_scores.unsqueeze(1) + margin))  # Using softplus for stability
+        bpr_loss = torch.mean(F.softplus(neg_scores - pos_scores.unsqueeze(1)))  # Using softplus for stability
         
     return bpr_loss, reg_loss
 
@@ -96,12 +91,8 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
         # Shuffle the DataFrame
         train_df = train_df.sample(frac=1).reset_index(drop=True)
 
-        if config['n_neg_samples'] == 1:
-            #S = neg_uniform_sample(train_array, train_neg_adj_list, n_users)
-            if config['full_sample']:
-                S = ut.full_uniform_sample(train_df, adj_list, n_users)
-            else:
-                S = ut.neg_uniform_sample(train_df, adj_list, item_sim_mat, n_users)
+        if config['samples'] == 1:
+            S = ut.neg_uniform_sample(train_df, adj_list, item_sim_mat, n_users)
         else:
             S = ut.multiple_neg_uniform_sample(train_df, adj_list, n_users)
          
@@ -117,7 +108,7 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
         if epoch % config["epochs_per_eval"] == 0:
             model.eval()
             with torch.no_grad():
-                _, out, _ = model(edge_index, edge_attrs)
+                _, out = model(edge_index, edge_attrs)
                 final_u_emb, final_i_emb = torch.split(out, (n_users, n_items))
                 recall,  prec, ncdg = ut.get_metrics(final_u_emb, final_i_emb, test_df, topK, interactions_t, device)
             
@@ -144,8 +135,8 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
         model.train()
         for (b_i, (b_users, b_pos, b_neg)) in enumerate(ut.minibatch(users, pos_items, neg_items, batch_size=b_size)):
                                      
-            u_emb, pos_emb, neg_emb, u_emb0,  pos_emb0, neg_emb0, scale = model.encode_minibatch(b_users, b_pos, b_neg, edge_index, edge_attrs)
-            bpr_loss, reg_loss = compute_bpr_loss(b_users, u_emb, pos_emb, neg_emb, u_emb0,  pos_emb0, neg_emb0, scale)
+            u_emb, pos_emb, neg_emb, u_emb0,  pos_emb0, neg_emb0 = model.encode_minibatch(b_users, b_pos, b_neg, edge_index, edge_attrs)
+            bpr_loss, reg_loss = compute_bpr_loss(b_users, u_emb, pos_emb, neg_emb, u_emb0,  pos_emb0, neg_emb0)
             
             reg_loss = decay * reg_loss
             total_loss = bpr_loss + reg_loss
@@ -202,17 +193,12 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
         knn_train_adj_df, item_sim_mat = create_uuii_adjmat(_train_df, verbose)
         
         adj_list = ut.calculate_neg_weights(_train_df, adj_list, item_sim_mat)
-        
-        # print(adj_list)
-        # sys.exit()
             
         knn_edge_index, knn_edge_attrs = get_edge_index(knn_train_adj_df)
         knn_edge_index = torch.tensor(knn_edge_index).to(device).long()
                     
         edge_index = knn_edge_index.to(device)
         edge_attrs = torch.tensor(knn_edge_attrs).to(device)
-    
-    
     
     cf_model = RecSysGNN(model=config['model'], 
                          emb_dim=config['emb_dim'],  
@@ -224,15 +210,7 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
                          scale=config['scale'],
                          self_loop=config['self_loop']).to(device)
     
-    #cf_model = torch.compile(cf_model)
-    
-    #opt = torch.optim.Adam(cf_model.parameters(), lr=config['lr'])
-    
-    opt = torch.optim.Adam([
-         {'params': [param for name, param in cf_model.named_parameters() if name != 'scale'], 'lr': config['lr']},  # Default learning rate
-         {'params': [cf_model.scale], 'lr': config['lr_scale']}  # Much bigger learning rate for scale
-    ])
-
+    opt = torch.optim.Adam(cf_model.parameters(), lr=config['lr'])
 
     model_file_path = f"./models/params/{config['model']}_{config['dataset']}_{config['edge']}"
     

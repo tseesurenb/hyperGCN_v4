@@ -222,130 +222,50 @@ def make_adj_list(train_df):
     
     return full_adj_list_dict
 
-def make_adj_list_batched(train_df, neg_sample_size):
-    
-    all_items_set = set(train_df['item_id'].unique())
 
-    # Group by user_id and aggregate item_ids into lists (positive items)
-    pos_items = train_df.groupby('user_id')['item_id'].agg(list)
-
-    # Compute neg_items by subtracting the pos_items from all_items for each user
-    neg_items = pos_items.apply(lambda pos: list(all_items_set.difference(pos)))
-
-    # Create a dictionary with user_id as the key and a sub-dictionary with pos_items and neg_item_batches
-    full_adj_list_dict = {}
-    j = 0
-    for user_id in pos_items.index:
-        pos_item_list = pos_items[user_id]
-        neg_item_list = neg_items[user_id]
-
-        random.shuffle(neg_item_list)
-        # Divide neg_items into batches of size batch_size
-        neg_item_batches = [neg_item_list[i:i + neg_sample_size] for i in range(0, len(neg_item_list), neg_sample_size)]
-          
-        # Add user_id, pos_items, and the neg_item_batches to the dictionary
-        full_adj_list_dict[user_id] = {
-            'pos_items': pos_item_list,
-            'neg_batches': len(neg_item_batches),
-            'neg_item_batches': neg_item_batches  # Store all batches in a list
-        }
-
-    #for i in range(10):
-    #    print(f"Full Adj List Dict: {full_adj_list_dict[i]['neg_batches']}, {neg_sample_size}, {len(full_adj_list_dict[i]['neg_item_batches'][full_adj_list_dict[i]['neg_batches'] - 2])}")
-        #print(f"Full Adj List Dict: {full_adj_list_dict[i]['pos_items']}")    
-    #sys.exit()
-    # Clear unnecessary variables from memory
-    del pos_items, neg_items, all_items_set
-
-    return full_adj_list_dict
-
-
-def neg_uniform_sample_20241126(train_df, adj_list, item_sim_dict, n_usr):
-    """_summary_
-
-    Args:
-        train_df (_type_): all interaction list user_id and item_id (positive items)
-        full_adj_list (_type_): this list contains all users and their positive and negative items ('neg_items')
-        n_usr (_type_): total number of users
-
-    Returns:
-        _type_: _description_
+def neg_uniform_sample_4(train_df, adj_list, item_sim_dict, n_usr, weighted_neg_sampling=False):
     """
+    Optimized negative sampling function.
+    """
+    # Convert the adjacency list to a dictionary for faster lookups
+    adj_dict = {
+        row[0]: (np.array(row[1]['neg_items']), 
+                 np.array(row[1].get('neg_weights', None))) 
+        for row in adj_list.iterrows()
+    }
     
-    print(train_df)
-    print("collumn names of train_df", train_df.columns)
-    sys.exit()
-    
-    interactions = train_df.to_numpy()
-    users = interactions[:, 0].astype(int)
-    pos_items = interactions[:, 1].astype(int)
-                
-    if config['weighted_neg_sampling']:
-        neg_items = np.array([
-                        np.random.choice(
-                            adj_list[u]['neg_items'],  # Negative items for user `u`
-                            p=adj_list[u]['neg_weights']  # Corresponding weights for negative items
-                        )
-                        for u in users
-                    ]) 
-    else:
-        neg_items = np.array([random.choice(adj_list[u]['neg_items']) for u in users])
-        
+    users = train_df['user_id'].to_numpy()
+    pos_items = train_df['item_id'].to_numpy()
 
-    pos_items = [item + n_usr for item in pos_items]
-    neg_items = [item + n_usr for item in neg_items]
+    # Vectorized sampling
+    if weighted_neg_sampling:
+        neg_items = np.array([
+            np.random.choice(adj_dict[u][0], p=adj_dict[u][1])
+            for u in users
+        ])
+    else:
+        neg_items = np.array([
+            np.random.choice(adj_dict[u][0])
+            for u in users
+        ])
     
+    # Adjust item IDs for output
+    pos_items += n_usr
+    neg_items += n_usr
+
+    # Stack arrays into the final output
     S = np.column_stack((users, pos_items, neg_items))
-    
-    del users, pos_items, neg_items
     
     return S
 
 def neg_uniform_sample(train_df, adj_list, item_sim_dict, n_usr):
-    """_summary_
 
-    Args:
-        train_df (_type_): all interaction list user_id and item_id (positive items)
-        full_adj_list (_type_): this list contains all users and their positive and negative items ('neg_items')
-        n_usr (_type_): total number of users
-
-    Returns:
-        _type_: _description_
-    """
-    # print("\n")
-    # print(adj_list.head())
-    # sys.exit()
-    interactions = adj_list.to_numpy()
+    interactions = train_df.to_numpy()
     users = interactions[:, 0].astype(int)
-    pos_items = interactions[:, 1].astype(int)
-                
-    # if config['weighted_neg_sampling']:
-    #     neg_items = np.array([
-    #                     np.random.choice(
-    #                         adj_list[u]['neg_items'],  # Negative items for user `u`
-    #                         p=adj_list[u]['neg_weights']  # Corresponding weights for negative items
-    #                     )
-    #                     for u in users
-    #                 ]) 
-    # else:
-    #     neg_items = np.array([random.choice(adj_list[u]['neg_items']) for u in users])
-        
-    
-    if config['weighted_neg_sampling']:
-        neg_items = np.array([
-            np.random.choice(
-                adj_list.iloc[u]['neg_items'],  # Negative items for user `u`
-                p=adj_list.iloc[u]['neg_weights']  # Corresponding weights for negative items
-            )
-            for u in users
-        ])
-    else:
-        neg_items = np.array([
-            random.choice(adj_list.iloc[u]['neg_items'])
-            for u in users
-        ])
-        
+    pos_items = interactions[:, 1].astype(int)           
 
+    neg_items = np.array([random.choice(adj_list[u]['neg_items']) for u in users])
+        
     pos_items = [item + n_usr for item in pos_items]
     neg_items = [item + n_usr for item in neg_items]
     
@@ -354,42 +274,13 @@ def neg_uniform_sample(train_df, adj_list, item_sim_dict, n_usr):
     del users, pos_items, neg_items
     
     return S
-
-def calculate_neg_weights_old(adj_list, items_sim_matrix):
-    # Step 1: calculate similarity between positive and negative items using pearson correlation
-    
-    print('before')
-    print(adj_list[0][['neg_weights']])
-    
-    for u in tqdm(adj_list.keys(), desc="Processing Users"):
-        pos_items = adj_list[u]['pos_items']
-        neg_items = adj_list[u]['neg_items']
-        
-        similarity_matrix = np.zeros((len(pos_items), len(neg_items)))
-        # fill code here, as items_sim_matrix contains the similarity scores between all items
-
-        # Fill the similarity matrix with scores from items_sim_matrix
-        for i, pos_item in enumerate(pos_items):
-            for j, neg_item in enumerate(neg_items):
-                similarity_matrix[i, j] = items_sim_matrix[pos_item, neg_item]
-        
-        # Create weight list for negative items by using the similarity matrix scores
-        weights = np.mean(similarity_matrix, axis=0)
-        adj_list[u]['neg_weights'] = weights
-    
-    # Step 3: return negative items and weights list
-    
-    print('after')
-    print(adj_list[0][['neg_weights']])
-    
-    sys.exit()
-          
-    return adj_list
 
 def calculate_neg_weights(train_df, adj_list, items_sim_matrix):
     # Prepare data for vectorized operations
     user_ids = train_df['user_id'].to_numpy()
     item_ids = train_df['item_id'].to_numpy()
+    
+    top_k = 400
 
     neg_weights_data = []
 
@@ -401,145 +292,54 @@ def calculate_neg_weights(train_df, adj_list, items_sim_matrix):
         weights = items_sim_matrix[pos_item, neg_items]
         if hasattr(weights, "toarray"):  # Handle sparse matrix case
             weights = weights.toarray().flatten()
-
-        # Normalize weights
-        weights_sum = weights.sum()
-        if weights_sum > 0:
-            weights /= weights_sum
+            
+        # Get top-k negative items by weight
+        if len(weights) > top_k:
+            #top_k_indices = np.argsort(weights)[-top_k:][::-1]  # Indices of top-k weights in descending order
+            
+            top_k_indices = np.argsort(weights)[:top_k]  # 
+            
+            top_neg_items = neg_items[top_k_indices]
+            top_neg_weights = weights[top_k_indices]
         else:
-            weights = np.full(len(weights), 1 / len(weights), dtype=np.float32)
+            top_neg_items = neg_items
+            top_neg_weights = weights
+
+        top_neg_items, top_neg_weights = shuffle(top_neg_items, top_neg_weights)
+        
+        # Normalize weights
+        weights_sum = top_neg_weights.sum()
+        if weights_sum > 0:
+            top_neg_weights /= weights_sum
+        else:
+            top_neg_weights = np.full(len(top_neg_weights), 1 / len(top_neg_weights), dtype=np.float32)
 
         # Append results
-        neg_weights_data.append((u, pos_item, neg_items.tolist(), weights.tolist()))
+        neg_weights_data.append((u, pos_item, top_neg_items.tolist(), top_neg_weights.tolist()))
 
     # Convert to DataFrame
     train_df_with_neg_list = pd.DataFrame(neg_weights_data, columns=['user_id', 'item_id', 'neg_items', 'neg_weights'])
 
     return train_df_with_neg_list
 
-def calculate_neg_weights_3(train_df, adj_list, items_sim_matrix):
-   
-    train_df_with_neg_list = pd.DataFrame(columns=['user_id', 'item_id', 'neg_items', 'neg_weights'])
-    
-    neg_weights_data = []
-    
-    for row in tqdm(train_df.itertuples(index=False), desc="Processing Users"):
-        u, pos_item = row.user_id, row.item_id
-        
-        neg_items = adj_list[u]['neg_items']
-        
-
-        weights = np.array([items_sim_matrix[pos_item, neg_item] for neg_item in neg_items])
-            
-        # Normalize weights to sum up to 1
-        if sum(weights) > 0:
-            weights /= sum(weights)
-        else:
-            weights = np.ones_like(weights) / len(weights)
-            
-        neg_weights_data.append({
-            'user_id': u,
-            'item_id': pos_item,
-            'neg_items': neg_items,
-            'neg_weights': weights
-        })
-        
-     # Convert the collected data into a DataFrame
-    train_df_with_neg_list = pd.DataFrame(neg_weights_data)
-        
-    return train_df_with_neg_list
-
-
-def calculate_neg_weights_2(adj_list, items_sim_matrix):
-    # Step 1: calculate similarity between positive and negative items using Pearson correlation
-    
-    for u in tqdm(adj_list.keys(), desc="Processing Users"):
-        pos_items = adj_list[u]['pos_items']
-        neg_items = adj_list[u]['neg_items']
-        
-        # Extract relevant rows and columns from the similarity matrix
-        similarity_matrix = items_sim_matrix[np.ix_(pos_items, neg_items)]
-        
-
-        # Compute the mean similarity for each negative item
-        weights = np.mean(similarity_matrix, axis=0).flatten()
-        
-        weights = 1 / (weights + 1e-8)
-        
-        # Normalize weights to sum up to 1
-        if weights.sum() > 0:
-            weights /= weights.sum()
-        else:
-            weights = np.ones_like(weights) / len(weights)  # Handle case where all weights are zero
-
-        
-        # Store the weights in the adjacency list
-        adj_list[u]['neg_weights'] = weights.tolist()[0]
-    
-    # Step 3: return negative items and weights list
-    return adj_list
-
-
-def get_similar_items(pos_items, neg_items, top_K):
-    # Step 1: calculate similarity between positive and negative items using pearson correlation
-    # Step 2: create weight list for negative items by using the similarity matrix scores
-    # Step 3: return negative items and weights list
-    
-    # please generate code for step 1, 2 and 3
-
-    # Calculate similarity between positive and negative items
-    sim_matrix = sim.cosine_similarity(pos_items, neg_items)
-    #sim_matrix = sim.pearson_similarity(pos_items, neg_items)
-    
-    # Get the top K dissimilar items
-    top_dis_neg_items = np.argsort(sim_matrix, axis=1)[:, :top_K]
-    #top_neg_items = np.argsort(sim_matrix, axis=1)[:, -top_K:]
-    
-    return top_dis_neg_items
 
 def multiple_neg_uniform_sample(train_df, full_adj_list, n_usr):
     interactions = train_df.to_numpy()
     users = interactions[:, 0].astype(int)
     pos_items = interactions[:, 1].astype(int)
-    
-    
+        
     #For each user, generate N negative samples
     neg_items_list = np.array([
          np.random.choice(full_adj_list[u]['neg_items'], size=config["neg_samples"], replace=True) 
          for u in users
      ])
-    
-    #neg_items_list = np.array([
-    #full_adj_list[u]['neg_item_batches'][random.randint(0, full_adj_list[u]['neg_batches'] - 2)]
-    #for u in users
-    #])
-    
+
     # Adjust positive and negative item indices by adding n_usr
     pos_items = [item + n_usr for item in pos_items]
     neg_items_list = [[item + n_usr for item in neg_list] for neg_list in neg_items_list]  # Keep the list structure
     
     # Stack the users, positive items, and the list of negative items
     S = np.column_stack((users, pos_items, neg_items_list))
-    
-    return S
-
-def full_uniform_sample(train_df, full_adj_list, n_usr):
-    users = np.random.randint(0, n_usr, len(train_df))
-    
-    # Pre-allocate arrays for positive and negative items
-    pos_items = np.empty(len(train_df), dtype=np.int32)
-    neg_items = np.empty(len(train_df), dtype=np.int32)
-    
-    # Vectorized sampling for positive and negative items
-    for idx, u in enumerate(users):
-        pos_list = full_adj_list[u]['pos_items']
-        neg_list = full_adj_list[u]['neg_items']
-        
-        pos_items[idx] = pos_list[np.random.randint(0, len(pos_list))] + n_usr
-        neg_items[idx] = neg_list[np.random.randint(0, len(neg_list))] + n_usr
-    
-    # Stack the columns into a single array
-    S = np.column_stack((users, pos_items, neg_items))
     
     return S
                  

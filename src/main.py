@@ -12,14 +12,9 @@ from utils import print_metrics, set_seed, plot_results
 import data_prep as dp 
 from world import config
 
-
-# STEP 1: set the device    
-#if torch.backends.mps.is_available():
-#   device = torch.device("mps")
-#else:
+# STEP 1: Set the device
 device = "cuda" if torch.cuda.is_available() else "cpu"
-
-#print(f"Device: {device}")
+print(f"Device: {device}")
 
 # Make sure the directory exists before saving
 res_dir = f"models/results"
