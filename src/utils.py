@@ -337,8 +337,11 @@ def calculate_neg_weights(adj_list, items_sim_matrix):
         # Extract relevant rows and columns from the similarity matrix
         similarity_matrix = items_sim_matrix[np.ix_(pos_items, neg_items)]
         
+
         # Compute the mean similarity for each negative item
         weights = np.mean(similarity_matrix, axis=0).flatten()
+        
+        weights = 1 / (weights + 1e-8)
         
         # Normalize weights to sum up to 1
         if weights.sum() > 0:
