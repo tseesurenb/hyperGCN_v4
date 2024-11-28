@@ -165,7 +165,19 @@ class hyperGAT(MessagePassing):
           self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
           self.graph_norms = self.edge_index_norm[1]
           
-          self.edge_attrs = F.leaky_relu(torch.exp(scale * edge_attrs), negative_slope=0.2)
+          print('\n before leaky edge_attrs:', edge_attrs)
+          
+          # lets print a sum of edge_attrs values for a sample source node in edge_index
+          print(f'\n edge_attrs values of edge_index[0] with number of edges: {edge_attrs[edge_index[0] == 0].sum()}, {edge_attrs[edge_index[0] == 0].shape[0]}')
+          print(f'\n edge_attrs values of edge_index[0] with number of edges: {edge_attrs[edge_index[0] == 10].sum()}, {edge_attrs[edge_index[0] == 10].shape[0]}')
+          
+          #self.edge_attrs = F.leaky_relu(torch.exp(scale * edge_attrs), negative_slope=0.2)
+          self.edge_attrs = softmax(scale * edge_attrs, edge_index[0])
+          
+          print(f'\n edge_attrs values of edge_index[0] with number of edges: {self.edge_attrs[edge_index[0] == 0].sum()}, {self.edge_attrs[edge_index[0] == 0].shape[0]}')
+          print(f'\n edge_attrs values of edge_index[0] with number of edges: {self.edge_attrs[edge_index[0] == 10].sum()}, {self.edge_attrs[edge_index[0] == 10].shape[0]}')
+          
+          print('\n after leaky edge_attrs:', self.edge_attrs)
           
         else:
           self.edge_attrs = None
