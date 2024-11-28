@@ -170,7 +170,7 @@ class hyperGAT(MessagePassing):
           self.edge_attr_net = nn.Sequential(
             nn.Linear(edge_attrs.size(-1), 64),
             nn.ReLU(),
-            nn.Linear(64, 1),
+            nn.Linear(64, edge_attrs.size(-1)),
             nn.Sigmoid()
           ).double().to(self.device)
           
