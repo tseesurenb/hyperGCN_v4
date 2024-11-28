@@ -132,7 +132,7 @@ class hyperGCN(MessagePassing):
           
 # HyperGCN Convolutional Layer
 class hyperGAT(MessagePassing):
-    def __init__(self, edge_attr_mode = 'exp', attr_drop = 0.2, self_loop = False, **kwargs):  
+    def __init__(self, edge_attr_mode = 'exp', attr_drop = 0.2, self_loop = False, device = 'cpu', **kwargs):  
         super().__init__(aggr='add')
         
         self.edge_attr_mode = edge_attr_mode
@@ -143,10 +143,11 @@ class hyperGAT(MessagePassing):
         num_heads = 4
         self.num_heads = num_heads
         self.head_dim = 32
+        self.device = device
         
         self.edge_attr_linears = nn.ModuleList([
             nn.Linear(64, self.head_dim) for _ in range(num_heads)
-        ])
+        ]).double().todevice(self.device)
         
     def compute_multi_head_attention(self, edge_attrs):
       # Compute attention for each head
@@ -171,7 +172,7 @@ class hyperGAT(MessagePassing):
             nn.ReLU(),
             nn.Linear(64, 1),
             nn.Sigmoid()
-          ).double()
+          ).double().device(self.device)
           
           edge_attrs = softmax(edge_attrs, edge_index[0])
           #self.edge_attrs = softmax(edge_attrs, edge_index[0])
@@ -364,6 +365,7 @@ class RecSysGNN(nn.Module):
       attr_drop = 0.2, # Only used in hyperGCN
       edge_attr_mode = None,
       scale = 1.0,
+      device = 'cpu',
       self_loop = False
   ):
     super(RecSysGNN, self).__init__()
@@ -376,9 +378,9 @@ class RecSysGNN(nn.Module):
     self.emb_dim = emb_dim
     
     # Initialize scale parameters for users and items
-    self.scale = nn.Parameter(torch.tensor(scale, dtype=torch.float32))
+    self.scale = nn.Parameter(torch.tensor(scale, dtype=torch.float64))
   
-    self.embedding = nn.Embedding(self.n_users + self.n_items, self.emb_dim, dtype=torch.float32)
+    self.embedding = nn.Embedding(self.n_users + self.n_items, self.emb_dim, dtype=torch.float64)
         
     if self.model == 'NGCF':
       self.convs = nn.ModuleList(NGCFConv(self.emb_dim, dropout=dropout) for _ in range(self.n_layers))
@@ -389,7 +391,7 @@ class RecSysGNN(nn.Module):
     elif self.model == 'hyperGCN':
       self.convs = nn.ModuleList(hyperGCN(edge_attr_mode=edge_attr_mode, attr_drop=attr_drop, self_loop=self_loop) for _ in range(self.n_layers))
     elif self.model == 'hyperGAT':
-      self.convs = nn.ModuleList(hyperGAT(edge_attr_mode=edge_attr_mode, attr_drop=attr_drop, self_loop=self_loop) for _ in range(self.n_layers))
+      self.convs = nn.ModuleList(hyperGAT(edge_attr_mode=edge_attr_mode, attr_drop=attr_drop, self_loop=self_loop, device=device) for _ in range(self.n_layers))
     elif self.model == 'HyperGCNAttention':
       self.convs = nn.ModuleList(HyperGCNAttention(edge_attr_mode=edge_attr_mode, attr_drop=attr_drop, self_loop=self_loop) for _ in range(self.n_layers))
     else:

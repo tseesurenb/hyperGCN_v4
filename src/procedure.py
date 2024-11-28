@@ -206,7 +206,8 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
                          edge_attr_mode = config['e_attr_mode'], 
                          attr_drop=config['e_attr_drop'],
                          scale=config['scale'],
-                         self_loop=config['self_loop']).to(device)
+                         self_loop=config['self_loop'],
+                         device = device).to(device)
     
     opt = torch.optim.Adam(cf_model.parameters(), lr=config['lr'])
 
