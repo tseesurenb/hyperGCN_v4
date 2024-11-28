@@ -164,6 +164,8 @@ class hyperGAT(MessagePassing):
           # Compute normalization  
           self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
           self.graph_norms = self.edge_index_norm[1]
+          
+          self.edge_attrs = torch.exp(scale * edge_attrs)
               
           # Apply softmax to edge attributes
           
@@ -174,19 +176,19 @@ class hyperGAT(MessagePassing):
             nn.Sigmoid()
           ).double().to(self.device)
           
+          print('summary of edge_attr_net')
+          print(self.edge_attr_net)
+          
           #edge_attrs = softmax(edge_attrs, edge_index[0])
           #self.edge_attrs = softmax(edge_attrs, edge_index[0])
         
         else:
           self.edge_attrs = None
         
+        self.edge_attrs = torch.exp(scale * edge_attrs)
         self.edge_attrs = self.edge_attr_net(edge_attrs)
-        self.edge_attrs = softmax(self.edge_attrs, edge_index[0])
-        
-        # Compute multi-head edge attributes
-        #multi_head_attrs = self.compute_multi_head_attention(edge_attrs)
-        #self.edge_attrs = multi_head_attrs.mean(dim=1)  # Aggregate across heads (average here)
-                
+        #self.edge_attrs = softmax(self.edge_attrs, edge_index[0])
+                        
         #self.edge_attrs = edge_attr_drop(edge_index, self.edge_attrs, self.attr_drop)
         
         # Start propagating messages (no update after aggregation)
