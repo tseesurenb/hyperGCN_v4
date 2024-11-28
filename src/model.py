@@ -149,8 +149,6 @@ class hyperGAT(MessagePassing):
             nn.Linear(64, self.head_dim) for _ in range(num_heads)
         ]).double().to(self.device)
         
-        self.leaky_relu = nn.LeakyReLU(negative_slope=0.2)
-        
     def compute_multi_head_attention(self, edge_attrs):
       # Compute attention for each head
       attr_heads = []
@@ -167,30 +165,12 @@ class hyperGAT(MessagePassing):
           self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
           self.graph_norms = self.edge_index_norm[1]
           
-          self.edge_attrs = self.leaky_relu(torch.exp(scale * edge_attrs))
-              
-          # Apply softmax to edge attributes
+          self.edge_attrs = F.leaky_relu(torch.exp(scale * edge_attrs), negative_slope=0.2)
           
-          # self.edge_attr_net = nn.Sequential(
-          #   nn.Linear(edge_attrs.size(-1), 64),
-          #   nn.ReLU(),
-          #   nn.Linear(64, edge_attrs.size(-1)),
-          #   nn.Sigmoid()
-          # ).double().to(self.device)
-          
-          #print('summary of edge_attr_net')
-          #print(self.edge_attr_net)
-          
-          #edge_attrs = softmax(edge_attrs, edge_index[0])
-          #self.edge_attrs = softmax(edge_attrs, edge_index[0])
-        
         else:
           self.edge_attrs = None
         
-        #self.edge_attrs = torch.exp(scale * edge_attrs)
-        #self.edge_attrs = self.edge_attr_net(edge_attrs)
-        #self.edge_attrs = softmax(self.edge_attrs, edge_index[0])
-                        
+                      
         #self.edge_attrs = edge_attr_drop(edge_index, self.edge_attrs, self.attr_drop)
         
         # Start propagating messages (no update after aggregation)
