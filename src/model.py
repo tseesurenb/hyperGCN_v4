@@ -26,6 +26,70 @@ def edge_attr_drop(edge_index, edge_attr, modify_prob=0.2):
 
     return new_edge_attr
 
+import torch
+import torch.nn.functional as F
+from torch_geometric.nn import MessagePassing
+from torch_geometric.utils import softmax
+
+class HyperGCNAttention(MessagePassing):
+    def __init__(self, edge_attr_mode='exp', attr_drop=0.2, self_loop=False, hidden_dim=64, **kwargs):
+        super().__init__(aggr='add')  # Aggregation mode: add
+        
+        self.edge_attr_mode = edge_attr_mode
+        self.attr_drop = attr_drop
+        self.add_self_loops = self_loop
+        self.edge_attrs = None
+        
+        # Trainable attention weights
+        #self.attn_weight = torch.nn.Parameter(torch.Tensor(hidden_dim, hidden_dim))
+        self.attn_weight = torch.nn.Parameter(torch.Tensor(hidden_dim, hidden_dim).double())
+
+        self.attn_bias = torch.nn.Parameter(torch.Tensor(1).double())
+        torch.nn.init.xavier_uniform_(self.attn_weight)  # Xavier initialization
+        torch.nn.init.zeros_(self.attn_bias)
+
+    def forward(self, x, edge_index, edge_attrs=None, scale=1.0):
+        # Process edge attributes
+        if edge_attrs is not None:
+            if self.edge_attr_mode == 'exp':
+                self.edge_attrs = torch.exp(scale * edge_attrs)
+            elif self.edge_attr_mode == 'sig':
+                self.edge_attrs = torch.sigmoid(edge_attrs)
+            elif self.edge_attr_mode == 'tan':
+                self.edge_attrs = torch.tanh(edge_attrs)
+            else:
+                self.edge_attrs = edge_attrs
+        else:
+            self.edge_attrs = None
+
+        # Start propagating messages
+        return self.propagate(edge_index, x=x, edge_attr=self.edge_attrs)
+
+    def message(self, x_i, x_j, edge_index, edge_attr):
+        """
+        x_i: Node features of target nodes
+        x_j: Node features of source nodes
+        edge_index: Edge indices
+        edge_attr: Edge attributes
+        """
+        # Compute attention scores
+        attn_score = (x_i @ self.attn_weight) * x_j
+        if edge_attr is not None:
+            attn_score = attn_score + edge_attr.view(-1, 1)
+        attn_score = attn_score.sum(dim=-1) + self.attn_bias
+        attn_score = F.leaky_relu(attn_score, negative_slope=0.2)
+
+        # Normalize attention scores using softmax
+        attn_score = softmax(attn_score, edge_index[0])
+
+        # Apply attention scores
+        return attn_score.view(-1, 1) * x_j
+
+    def update(self, aggr_out):
+        # Optional: Add additional transformations after aggregation
+        return aggr_out
+
+
 # HyperGCN Convolutional Layer
 class hyperGCN(MessagePassing):
     def __init__(self, edge_attr_mode = 'exp', attr_drop = 0.2, self_loop = False, **kwargs):  
@@ -65,6 +129,119 @@ class hyperGCN(MessagePassing):
         else:
             return norm.view(-1, 1) * x_j
           
+          
+# HyperGCN Convolutional Layer
+class hyperGAT(MessagePassing):
+    def __init__(self, edge_attr_mode = 'exp', attr_drop = 0.2, self_loop = False, **kwargs):  
+        super().__init__(aggr='add')
+        
+        self.edge_attr_mode = edge_attr_mode
+        self.graph_norms = None
+        self.edge_attrs = None
+        self.add_self_loops = self_loop
+        self.attr_drop = attr_drop # make edge_attr 0 for 20% of edges
+        num_heads = 4
+        self.num_heads = num_heads
+        self.head_dim = 32
+        
+        self.edge_attr_linears = nn.ModuleList([
+            nn.Linear(64, self.head_dim) for _ in range(num_heads)
+        ])
+        
+    def compute_multi_head_attention(self, edge_attrs):
+      # Compute attention for each head
+      attr_heads = []
+      for linear in self.edge_attr_linears:
+          attr_heads.append(F.softmax(linear(edge_attrs), dim=0))  # Apply softmax per head
+      return torch.stack(attr_heads, dim=1)  # Shape: [num_edges, num_heads, head_dim]
+
+        
+    def forward(self, x, edge_index, edge_attrs, scale):
+        
+        
+        if self.graph_norms is None:
+          # Compute normalization  
+          self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
+          self.graph_norms = self.edge_index_norm[1]
+              
+          # Apply softmax to edge attributes
+          
+          self.edge_attr_net = nn.Sequential(
+            nn.Linear(edge_attrs.size(-1), 64),
+            nn.ReLU(),
+            nn.Linear(64, 1),
+            nn.Sigmoid()
+          ).double()
+          
+          edge_attrs = softmax(edge_attrs, edge_index[0])
+          #self.edge_attrs = softmax(edge_attrs, edge_index[0])
+        
+        else:
+          self.edge_attrs = None
+          
+        self.edge_attrs = self.edge_attr_net(edge_attrs)
+        
+        # Compute multi-head edge attributes
+        #multi_head_attrs = self.compute_multi_head_attention(edge_attrs)
+        #self.edge_attrs = multi_head_attrs.mean(dim=1)  # Aggregate across heads (average here)
+                
+        #self.edge_attrs = edge_attr_drop(edge_index, self.edge_attrs, self.attr_drop)
+        
+        # Start propagating messages (no update after aggregation)
+        return self.propagate(edge_index, x=x, norm=self.graph_norms, attr = self.edge_attrs)
+
+    def message(self, x_j, norm, attr):
+        if attr != None:
+            return norm.view(-1, 1) * (x_j * attr.view(-1, 1))
+        else:
+            return norm.view(-1, 1) * x_j
+
+class hyperGAT3(MessagePassing):
+    def __init__(self,edge_attr_mode='exp', heads=8, attr_drop=0.0, self_loop = False,  **kwargs):
+        super().__init__(aggr='add', **kwargs)
+
+        in_channels = 64
+        out_channels = 64
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.heads = heads
+        self.dropout = attr_drop
+
+        self.weight = nn.Parameter(torch.Tensor(in_channels, heads * out_channels))
+        self.att = nn.Parameter(torch.Tensor(1, heads, 2 * out_channels))
+
+
+        self.edge_attr_mode = edge_attr_mode
+
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        torch.nn.init.xavier_uniform_(self.weight)
+        torch.nn.init.xavier_uniform_(self.att)
+
+
+    def forward(self, x, edge_index, edge_attrs, scale):
+        # Node feature transformation
+        x = torch.matmul(x, self.weight).view(-1, self.heads, self.out_channels)
+
+        # Edge feature transformation (optional, based on edge_attr_mode)
+        if self.edge_attr_mode == 'exp':
+             edge_attrs = torch.exp(edge_attrs)
+        # elif self.edge_attr_mode == 'linear':
+        #     # ... (apply linear transformation)
+
+        # Attention mechanism
+        edge_attrs = F.dropout(edge_attrs, p=self.dropout, training=self.training)
+        edge_attrs = (edge_attrs * self.att[:, :, 0]).sum(dim=-1) - (edge_attrs * self.att[:, :, 1]).sum(dim=-1)
+        edge_attrs = F.softmax(edge_attrs, dim=1)
+
+        # Message passing
+        return self.propagate(edge_index, x=x, edge_attr=edge_attrs)
+
+    def message(self, x_j, edge_attr):
+        # Attended message passing
+        return edge_attr.view(-1, 1) * x_j
+      
 # NGCF Convolutional Layer
 class NGCFConv(MessagePassing):
   def __init__(self, emb_dim, dropout, bias=True, **kwargs):  
@@ -191,7 +368,7 @@ class RecSysGNN(nn.Module):
   ):
     super(RecSysGNN, self).__init__()
 
-    assert (model == 'NGCF' or model == 'lightGCN') or model == 'hyperGCN' or model == 'knnNGCF', 'Model must be NGCF or LightGCN or hyperGCN'
+    assert (model == 'NGCF' or model == 'lightGCN') or model == 'hyperGCN' or model == 'knnNGCF' or model == 'hyperGAT' or model == 'HyperGCNAttention', 'Model must be NGCF or LightGCN or hyperGCN or hyperGAN'
     self.model = model
     self.n_users = n_users
     self.n_items = n_items
@@ -211,6 +388,10 @@ class RecSysGNN(nn.Module):
       self.convs = nn.ModuleList(LightGCNConv() for _ in range(self.n_layers))
     elif self.model == 'hyperGCN':
       self.convs = nn.ModuleList(hyperGCN(edge_attr_mode=edge_attr_mode, attr_drop=attr_drop, self_loop=self_loop) for _ in range(self.n_layers))
+    elif self.model == 'hyperGAT':
+      self.convs = nn.ModuleList(hyperGAT(edge_attr_mode=edge_attr_mode, attr_drop=attr_drop, self_loop=self_loop) for _ in range(self.n_layers))
+    elif self.model == 'HyperGCNAttention':
+      self.convs = nn.ModuleList(HyperGCNAttention(edge_attr_mode=edge_attr_mode, attr_drop=attr_drop, self_loop=self_loop) for _ in range(self.n_layers))
     else:
       raise ValueError('Model must be NGCF, LightGCN or hyperGCN')
 
