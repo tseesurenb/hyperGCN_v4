@@ -165,7 +165,7 @@ class hyperGAT(MessagePassing):
           self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
           self.graph_norms = self.edge_index_norm[1]
           
-          self.edge_attrs = nn.LeakyReLU(torch.exp(scale * edge_attrs), negative_slope=0.2)
+          self.edge_attrs = nn.LeakyReLU(torch.exp(scale * edge_attrs))
               
           # Apply softmax to edge attributes
           
