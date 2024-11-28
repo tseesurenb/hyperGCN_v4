@@ -147,7 +147,7 @@ class hyperGAT(MessagePassing):
         
         self.edge_attr_linears = nn.ModuleList([
             nn.Linear(64, self.head_dim) for _ in range(num_heads)
-        ]).double()
+        ]).double().to(self.device)
         
     def compute_multi_head_attention(self, edge_attrs):
       # Compute attention for each head
@@ -172,7 +172,7 @@ class hyperGAT(MessagePassing):
             nn.ReLU(),
             nn.Linear(64, 1),
             nn.Sigmoid()
-          ).double()
+          ).double().to(self.device)
           
           edge_attrs = softmax(edge_attrs, edge_index[0])
           #self.edge_attrs = softmax(edge_attrs, edge_index[0])
@@ -180,9 +180,6 @@ class hyperGAT(MessagePassing):
         else:
           self.edge_attrs = None
         
-        print('device type of edge_attrs:', edge_attrs.device)
-        print('device type of self.edge_attr_net:',  self.edge_attrs)
-        print('device type of edge_index:', edge_index.device)
         self.edge_attrs = self.edge_attr_net(edge_attrs)
         
         # Compute multi-head edge attributes
