@@ -165,19 +165,19 @@ class hyperGAT(MessagePassing):
           self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
           self.graph_norms = self.edge_index_norm[1]
           
-          self.edge_attrs = torch.exp(scale * edge_attrs)
+          self.edge_attrs = nn.LeakyReLU(torch.exp(scale * edge_attrs), negative_slope=0.2)
               
           # Apply softmax to edge attributes
           
-          self.edge_attr_net = nn.Sequential(
-            nn.Linear(edge_attrs.size(-1), 64),
-            nn.ReLU(),
-            nn.Linear(64, edge_attrs.size(-1)),
-            nn.Sigmoid()
-          ).double().to(self.device)
+          # self.edge_attr_net = nn.Sequential(
+          #   nn.Linear(edge_attrs.size(-1), 64),
+          #   nn.ReLU(),
+          #   nn.Linear(64, edge_attrs.size(-1)),
+          #   nn.Sigmoid()
+          # ).double().to(self.device)
           
-          print('summary of edge_attr_net')
-          print(self.edge_attr_net)
+          #print('summary of edge_attr_net')
+          #print(self.edge_attr_net)
           
           #edge_attrs = softmax(edge_attrs, edge_index[0])
           #self.edge_attrs = softmax(edge_attrs, edge_index[0])
@@ -185,8 +185,8 @@ class hyperGAT(MessagePassing):
         else:
           self.edge_attrs = None
         
-        self.edge_attrs = torch.exp(scale * edge_attrs)
-        self.edge_attrs = self.edge_attr_net(edge_attrs)
+        #self.edge_attrs = torch.exp(scale * edge_attrs)
+        #self.edge_attrs = self.edge_attr_net(edge_attrs)
         #self.edge_attrs = softmax(self.edge_attrs, edge_index[0])
                         
         #self.edge_attrs = edge_attr_drop(edge_index, self.edge_attrs, self.attr_drop)
