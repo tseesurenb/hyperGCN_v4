@@ -182,6 +182,7 @@ class hyperGAT(MessagePassing):
         
         print('device type of edge_attrs:', edge_attrs.device)
         print('device type of self.edge_attr_net:',  self.edge_attrs)
+        print('device type of edge_index:', edge_index.device)
         self.edge_attrs = self.edge_attr_net(edge_attrs)
         
         # Compute multi-head edge attributes
