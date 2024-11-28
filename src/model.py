@@ -172,7 +172,7 @@ class hyperGAT(MessagePassing):
             nn.ReLU(),
             nn.Linear(64, 1),
             nn.Sigmoid()
-          ).double().device(self.device)
+          ).double()
           
           edge_attrs = softmax(edge_attrs, edge_index[0])
           #self.edge_attrs = softmax(edge_attrs, edge_index[0])
