@@ -174,13 +174,14 @@ class hyperGAT(MessagePassing):
             nn.Sigmoid()
           ).double().to(self.device)
           
-          edge_attrs = softmax(edge_attrs, edge_index[0])
+          #edge_attrs = softmax(edge_attrs, edge_index[0])
           #self.edge_attrs = softmax(edge_attrs, edge_index[0])
         
         else:
           self.edge_attrs = None
         
         self.edge_attrs = self.edge_attr_net(edge_attrs)
+        self.edge_attrs = softmax(self.edge_attrs, edge_index[0])
         
         # Compute multi-head edge attributes
         #multi_head_attrs = self.compute_multi_head_attention(edge_attrs)

@@ -36,5 +36,6 @@ config['samples'] = args.samples
 config['save_sim_mat'] = args.save_sim_mat
 config['save_res'] = args.save_res
 config['save_pred'] = args.save_pred
+config['save_model'] = args.save_model
 config['margin'] = args.margin
 config['load'] = args.load

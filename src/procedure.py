@@ -230,7 +230,8 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
    
 
     # Assume 'model' is your PyTorch model
-    torch.save(cf_model.state_dict(), model_file_path)
+    if config['save_model']:
+        torch.save(cf_model.state_dict(), model_file_path)
     # make all predictions for all users and items
     if config['save_pred']:
         predictions = get_all_predictions(cf_model, edge_index, edge_attrs, device)
