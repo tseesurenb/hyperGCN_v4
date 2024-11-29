@@ -13,16 +13,19 @@ from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import add_self_loops, degree
 from torch_geometric.utils import degree
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
+from world import config
 
-def edge_attr_drop(edge_index, edge_attr, modify_prob=0.2):
+def edge_attr_drop(edge_index, edge_attr, modify_prob=0.2, mode=1):
 
     num_edges = edge_index.size(1)
     mask = torch.rand(num_edges) < modify_prob
 
     # Modify the selected edge attributes to 1
     new_edge_attr = edge_attr.clone()
-    new_edge_attr[mask] = 1.0
-    #new_edge_attr[mask] = 0.0
+    if mode == 1:
+      new_edge_attr[mask] = 1.0
+    else:
+      new_edge_attr[mask] = 0.0
 
     return new_edge_attr
 
@@ -169,7 +172,7 @@ class hyperGAT(MessagePassing):
           self.edge_attrs = None
         
         if self.attr_drop > 0.0:
-          edge_attrs = edge_attr_drop(edge_index, edge_attrs, self.attr_drop)
+          edge_attrs = edge_attr_drop(edge_index, edge_attrs, self.attr_drop, mode=config['drop_mode'])
         
         # Start propagating messages (no update after aggregation)
         return self.propagate(edge_index, x=x, norm=self.graph_norms, attr = self.edge_attrs)
