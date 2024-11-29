@@ -171,7 +171,7 @@ class hyperGAT(MessagePassing):
         else:
           self.edge_attrs = None
         
-        if self.attr_drop > 0.0:
+        if self.attr_drop >= 0.0:
           edge_attrs = edge_attr_drop(edge_index, edge_attrs, self.attr_drop, mode=config['drop_mode'])
         
         # Start propagating messages (no update after aggregation)
