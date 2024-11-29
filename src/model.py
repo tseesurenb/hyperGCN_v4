@@ -178,6 +178,9 @@ class hyperGAT(MessagePassing):
         return self.propagate(edge_index, x=x, norm=self.graph_norms, attr = self.edge_attrs)
 
     def message(self, x_j, norm, attr):
+        
+        return norm.view(-1, 1) * x_j
+      
         if attr != None:
             return norm.view(-1, 1) * (x_j * attr.view(-1, 1))
         else:
