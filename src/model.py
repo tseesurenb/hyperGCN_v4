@@ -171,15 +171,15 @@ class hyperGAT(MessagePassing):
         else:
           self.edge_attrs = None
         
-        if self.attr_drop >= 0.0:
-          edge_attrs = edge_attr_drop(edge_index, edge_attrs, self.attr_drop, mode=config['drop_mode'])
+        #if self.attr_drop >= 0.0:
+        #  edge_attrs = edge_attr_drop(edge_index, edge_attrs, self.attr_drop, mode=config['drop_mode'])
         
         # Start propagating messages (no update after aggregation)
         return self.propagate(edge_index, x=x, norm=self.graph_norms, attr = self.edge_attrs)
 
     def message(self, x_j, norm, attr):
         
-        return norm.view(-1, 1) * x_j
+        return norm.view(-1, 1) * (x_j * attr.view(-1, 1))
       
         if attr != None:
             return norm.view(-1, 1) * (x_j * attr.view(-1, 1))
