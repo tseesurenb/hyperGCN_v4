@@ -118,8 +118,6 @@ class hyperGCN(MessagePassing):
             self.edge_attrs = torch.sigmoid(edge_attrs)
           elif self.edge_attr_mode == 'tan' and edge_attrs != None:
             self.edge_attrs = torch.tanh(edge_attrs)
-          else:
-            self.edge_attrs = None
                 
         #self.edge_attrs = edge_attr_drop(edge_index, self.edge_attrs, self.attr_drop)
         
@@ -166,10 +164,9 @@ class hyperGAT(MessagePassing):
           self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
           self.graph_norms = self.edge_index_norm[1]
 
-          #self.edge_attrs = F.leaky_relu(torch.exp(scale * edge_attrs), negative_slope=0.2)
-          self.edge_attrs = softmax(scale * edge_attrs, edge_index[0])
-        #else:
-        #  self.edge_attrs = None
+          self.edge_attrs = F.leaky_relu(torch.exp(scale * edge_attrs), negative_slope=0.2)
+          #self.edge_attrs = softmax(scale * edge_attrs, edge_index[0])
+
         
         #if self.attr_drop >= 0.0:
         #  edge_attrs = edge_attr_drop(edge_index, edge_attrs, self.attr_drop, mode=config['drop_mode'])
@@ -178,9 +175,7 @@ class hyperGAT(MessagePassing):
         return self.propagate(edge_index, x=x, norm=self.graph_norms, attr = self.edge_attrs)
 
     def message(self, x_j, norm, attr):
-        
-        return norm.view(-1, 1) * (x_j * attr.view(-1, 1))
-      
+        # Attended message passing      
         if attr != None:
             return norm.view(-1, 1) * (x_j * attr.view(-1, 1))
         else:
