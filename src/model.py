@@ -168,8 +168,8 @@ class hyperGAT(MessagePassing):
 
           #self.edge_attrs = F.leaky_relu(torch.exp(scale * edge_attrs), negative_slope=0.2)
           self.edge_attrs = softmax(scale * edge_attrs, edge_index[0])
-        else:
-          self.edge_attrs = None
+        #else:
+        #  self.edge_attrs = None
         
         #if self.attr_drop >= 0.0:
         #  edge_attrs = edge_attr_drop(edge_index, edge_attrs, self.attr_drop, mode=config['drop_mode'])
