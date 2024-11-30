@@ -88,7 +88,7 @@ class hyperGAT(MessagePassing):
           self.graph_norms = self.edge_index_norm[1]
 
           if config['e_attr_mode'] == 'exp' and edge_attrs != None:
-            self.edge_attrs = F.leaky_relu(torch.exp(scale * edge_attrs))
+            self.edge_attrs = F.leaky_relu(torch.exp(scale * edge_attrs)) # scale * edge_attrs
           elif config['e_attr_mode'] == 'smax' and edge_attrs != None:
             self.edge_attrs = softmax(edge_attrs, edge_index[0])
           elif config['e_attr_mode'] == 'raw' and edge_attrs != None:
