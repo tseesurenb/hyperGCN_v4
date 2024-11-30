@@ -164,20 +164,26 @@ class hyperGAT(MessagePassing):
           self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
           self.graph_norms = self.edge_index_norm[1]
 
-          #self.edge_attrs = torch.exp(scale * edge_attrs)
-          self.edge_attrs = edge_attrs
+          if config['edge_attr_mode'] == 'exp' and edge_attrs != None:
+            self.edge_attrs = torch.exp(scale * edge_attrs)
+          elif config['edge_attr_mode'] == 'smax' and edge_attrs != None:
+            self.edge_attrs = softmax(scale * edge_attrs, edge_index[0])
+          elif config['edge_attr_mode'] == 'raw' and edge_attrs != None:
+            self.edge_attrs = edge_attrs
+          else:
+            print('Invalid edge_attr_mode')
+         
           
           #self.edge_attrs = F.leaky_relu(torch.exp(scale * edge_attrs), negative_slope=0.2)
           #self.edge_attrs = softmax(scale * edge_attrs, edge_index[0])
-
         
-        #if self.attr_drop >= 0.0:
-        #  edge_attrs = edge_attr_drop(edge_index, edge_attrs, self.attr_drop, mode=config['drop_mode'])
+        if self.attr_drop >= 0.0 and self.edge_attrs != None:
+          self.edge_attrs = edge_attr_drop(edge_index, self.edge_attrs, self.attr_drop, mode=config['drop_mode'])
         
         # Start propagating messages (no update after aggregation)
         return self.propagate(edge_index, x=x, norm=self.graph_norms, attr = self.edge_attrs)
 
-    def message(self, x_j, norm, attr):
+    def message(self, x_j, norm, attr):      
         # Attended message passing      
         if attr != None:
             return norm.view(-1, 1) * (x_j * attr.view(-1, 1))
