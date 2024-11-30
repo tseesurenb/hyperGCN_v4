@@ -170,6 +170,8 @@ class hyperGAT(MessagePassing):
             self.edge_attrs = softmax(scale * edge_attrs, edge_index[0])
           elif config['e_attr_mode'] == 'raw' and edge_attrs != None:
             self.edge_attrs = edge_attrs
+          elif config['e_attr_mode'] == 'none' and edge_attrs != None:
+            self.edge_attrs = None
           else:
             print('Invalid edge_attr_mode')
                   
