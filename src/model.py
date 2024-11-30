@@ -167,7 +167,7 @@ class hyperGAT(MessagePassing):
           if config['e_attr_mode'] == 'exp' and edge_attrs != None:
             self.edge_attrs = torch.exp(scale * edge_attrs)
           elif config['e_attr_mode'] == 'smax' and edge_attrs != None:
-            self.edge_attrs = softmax(scale * edge_attrs, edge_index[0])
+            self.edge_attrs = scale * softmax(edge_attrs, edge_index[0])
           elif config['e_attr_mode'] == 'raw' and edge_attrs != None:
             self.edge_attrs = edge_attrs
           elif config['e_attr_mode'] == 'none' and edge_attrs != None:
