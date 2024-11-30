@@ -164,11 +164,11 @@ class hyperGAT(MessagePassing):
           self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
           self.graph_norms = self.edge_index_norm[1]
 
-          if config['edge_attr_mode'] == 'exp' and edge_attrs != None:
+          if config['e_attr_mode'] == 'exp' and edge_attrs != None:
             self.edge_attrs = torch.exp(scale * edge_attrs)
-          elif config['edge_attr_mode'] == 'smax' and edge_attrs != None:
+          elif config['e_attr_mode'] == 'smax' and edge_attrs != None:
             self.edge_attrs = softmax(scale * edge_attrs, edge_index[0])
-          elif config['edge_attr_mode'] == 'raw' and edge_attrs != None:
+          elif config['e_attr_mode'] == 'raw' and edge_attrs != None:
             self.edge_attrs = edge_attrs
           else:
             print('Invalid edge_attr_mode')
