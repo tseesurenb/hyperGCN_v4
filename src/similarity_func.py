@@ -33,11 +33,11 @@ def jaccard_sim(matrix, top_k=20, self_loop=False, verbose=-1):
     union = row_sums[:, None] + row_sums[None, :] - intersection
     
     # Ensure intersection and union are of type float to avoid dtype issues
-    intersection = intersection.astype(float)
-    union = union.astype(float)
+    intersection = intersection.astype(np.float32)
+    union = union.astype(np.float32)
 
     # Compute Jaccard similarity
-    similarity_matrix = np.divide(intersection, union, out=np.zeros_like(intersection, dtype=float), where=union != 0)
+    similarity_matrix = np.divide(intersection, union, out=np.zeros_like(intersection, dtype=np.float32), where=union != 0)
 
     full_similarity_matrix = similarity_matrix.copy()  # Keep the full similarity matrix
     

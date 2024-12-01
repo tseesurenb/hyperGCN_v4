@@ -127,7 +127,7 @@ class NGCFConv(MessagePassing):
     nn.init.xavier_uniform_(self.lin_1.weight)
     nn.init.xavier_uniform_(self.lin_2.weight)
 
-  def forward(self, x, edge_index, edge_attrs):
+  def forward(self, x, edge_index, edge_attrs, scale):
     # Compute normalization
     from_, to_ = edge_index
     deg = degree(to_, x.size(0), dtype=x.dtype)
@@ -157,8 +157,8 @@ class hyperNGCF(MessagePassing):
     self.norm = None
     self.edge_attrs = None
 
-    self.lin_1 = nn.Linear(emb_dim, emb_dim, bias=bias)
-    self.lin_2 = nn.Linear(emb_dim, emb_dim, bias=bias)
+    self.lin_1 = nn.Linear(emb_dim, emb_dim, bias=bias, dtype=torch.float32)
+    self.lin_2 = nn.Linear(emb_dim, emb_dim, bias=bias, dtype=torch.float32)
 
     self.init_parameters()
 
@@ -166,7 +166,7 @@ class hyperNGCF(MessagePassing):
     nn.init.xavier_uniform_(self.lin_1.weight)
     nn.init.xavier_uniform_(self.lin_2.weight)
 
-  def forward(self, x, edge_index, edge_attrs):
+  def forward(self, x, edge_index, edge_attrs, scale):
     # Compute normalization
     if self.norm is None:
       from_, to_ = edge_index
@@ -181,8 +181,7 @@ class hyperNGCF(MessagePassing):
         self.edge_attrs = torch.sigmoid(edge_attrs)
       elif self.edge_attr_mode == 'tan':
         self.edge_attrs = torch.tanh(edge_attrs)
-      else:
-        self.edge_attrs = None
+
 
     # Start propagating messages
     out = self.propagate(edge_index, x=(x, x), norm=self.norm, attr = self.edge_attrs)
@@ -192,7 +191,7 @@ class hyperNGCF(MessagePassing):
     out = F.dropout(out, self.dropout, self.training)
     return F.leaky_relu(out)
 
-  def message(self, x_j, x_i, norm, attr):
+  def message(self, x_j, x_i, norm, attr):    
     return norm.view(-1, 1) * (self.lin_1(x_j) + self.lin_2(x_j * x_i)) * attr.view(-1, 1) 
 
 
@@ -245,13 +244,13 @@ class RecSysGNN(nn.Module):
     self.emb_dim = emb_dim
     
     # Initialize scale parameters for users and items
-    self.scale = nn.Parameter(torch.tensor(scale, dtype=torch.float64))
+    self.scale = nn.Parameter(torch.tensor(scale, dtype=torch.float32))
   
-    self.embedding = nn.Embedding(self.n_users + self.n_items, self.emb_dim, dtype=torch.float64)
+    self.embedding = nn.Embedding(self.n_users + self.n_items, self.emb_dim, dtype=torch.float32)
         
     if self.model == 'NGCF':
       self.convs = nn.ModuleList(NGCFConv(self.emb_dim, dropout=dropout) for _ in range(self.n_layers))
-    elif self.model == 'knnNGCF':
+    elif self.model == 'hyperNGCF':
       self.convs = nn.ModuleList(hyperNGCF(self.emb_dim, dropout=dropout, edge_attr_mode=edge_attr_mode) for _ in range(self.n_layers))
     elif self.model == 'lightGCN':
       self.convs = nn.ModuleList(lightGCN() for _ in range(self.n_layers))

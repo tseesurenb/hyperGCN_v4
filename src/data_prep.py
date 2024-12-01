@@ -27,7 +27,7 @@ def get_edge_index(sparse_matrix):
     # Extract row, column indices and data values
     row_indices = sparse_matrix.row
     column_indices = sparse_matrix.col
-    data = sparse_matrix.data
+    data = sparse_matrix.data.astype(np.float32)
         
     # Prepare edge index
     edge_index = np.vstack((row_indices, column_indices))
