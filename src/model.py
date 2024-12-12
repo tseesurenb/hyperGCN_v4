@@ -88,6 +88,8 @@ class hyperGAT(MessagePassing):
           self.graph_norms = self.edge_index_norm[1]
 
           if config['e_attr_mode'] == 'exp' and edge_attrs != None:
+            self.edge_attrs = torch.exp(scale * edge_attrs) # scale * edge_attrs
+          elif config['e_attr_mode'] == 'lexp' and edge_attrs != None:
             self.edge_attrs = F.leaky_relu(torch.exp(scale * edge_attrs)) # scale * edge_attrs
           elif config['e_attr_mode'] == 'smax' and edge_attrs != None:
             self.edge_attrs = softmax(edge_attrs, edge_index[0])
@@ -107,9 +109,11 @@ class hyperGAT(MessagePassing):
     def message(self, x_j, norm, attr):      
         # Attended message passing      
         if attr != None:
+            return F.leaky_relu((x_j * attr.view(-1, 1)))
             return norm.view(-1, 1) * (x_j * attr.view(-1, 1))
         else:
             return norm.view(-1, 1) * x_j
+          
 
 # NGCF Convolutional Layer
 class NGCFConv(MessagePassing):
@@ -181,7 +185,10 @@ class hyperNGCF(MessagePassing):
         self.edge_attrs = torch.sigmoid(edge_attrs)
       elif self.edge_attr_mode == 'tan':
         self.edge_attrs = torch.tanh(edge_attrs)
-
+      elif self.edge_attr_mode == 'raw':
+        self.edge_attrs = edge_attrs
+      else:
+        print('Invalid edge_attr_mode')
 
     # Start propagating messages
     out = self.propagate(edge_index, x=(x, x), norm=self.norm, attr = self.edge_attrs)
