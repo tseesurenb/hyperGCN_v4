@@ -243,7 +243,7 @@ def calculate_neg_weights(train_df, adj_list, items_sim_matrix):
     user_ids = train_df['user_id'].to_numpy()
     item_ids = train_df['item_id'].to_numpy()
     
-    top_k = 400
+    top_k = 40
 
     neg_weights_data = []
 

@@ -92,7 +92,7 @@ class hyperGAT(MessagePassing):
           elif config['e_attr_mode'] == 'lexp' and edge_attrs != None:
             self.edge_attrs = F.leaky_relu(torch.exp(scale * edge_attrs)) # scale * edge_attrs
           elif config['e_attr_mode'] == 'smax' and edge_attrs != None:
-            self.edge_attrs = softmax(edge_attrs, edge_index[0])
+            self.edge_attrs = softmax(edge_attrs, edge_index[1])
           elif config['e_attr_mode'] == 'raw' and edge_attrs != None:
             self.edge_attrs = edge_attrs
           elif config['e_attr_mode'] == 'none' and edge_attrs != None:
@@ -109,7 +109,8 @@ class hyperGAT(MessagePassing):
     def message(self, x_j, norm, attr):      
         # Attended message passing      
         if attr != None:
-            return F.leaky_relu((x_j * attr.view(-1, 1)))
+            #return (x_j * attr.view(-1, 1))
+            #return F.leaky_relu((x_j * attr.view(-1, 1)))
             return norm.view(-1, 1) * (x_j * attr.view(-1, 1))
         else:
             return norm.view(-1, 1) * x_j
