@@ -310,7 +310,7 @@ class RecSysGNN(nn.Module):
       print('Attention scores:', attention_scores)
       print('\nafter out:\n', out)
       
-      sys.exit()
+      #sys.exit()
         
     return emb0, out
 
