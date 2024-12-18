@@ -305,7 +305,7 @@ class RecSysGNN(nn.Module):
       attention_scores = self.softmax(self.attention_weights)
       out = torch.stack(embs, dim=0)  # Shape: [n_layers+1, num_nodes, emb_dim]
       #print('\nbefore out:\n', out)
-      out = torch.sum(out * attention_scores[:, None, None], dim=0)  # Weighted sum
+      out = torch.sum(out * attention_scores[:, None], dim=0)  # Weighted sum
       
       #print('Attention scores:', attention_scores)
       #print('\nafter out:\n', out)
