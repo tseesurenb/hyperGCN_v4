@@ -84,15 +84,21 @@ class hyperGAT(MessagePassing):
         
         if self.graph_norms is None:
           # Compute normalization  
-          self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
-          self.graph_norms = self.edge_index_norm[1]
-
-          if config['e_attr_mode'] == 'exp' and edge_attrs != None:
-            self.edge_attrs = torch.exp(scale * edge_attrs) # scale * edge_attrs
-          elif config['e_attr_mode'] == 'lexp' and edge_attrs != None:
-            self.edge_attrs = F.leaky_relu(torch.exp(scale * edge_attrs)) # scale * edge_attrs
+          #self.edge_index_norm = gcn_norm(edge_index=edge_index, add_self_loops=self.add_self_loops)
+          
+          from_, to_ = edge_index
+          deg = degree(to_, x.size(0), dtype=x.dtype)
+          deg_inv_sqrt = deg.pow(-0.5)
+          deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
+          norm = deg_inv_sqrt[from_] * deg_inv_sqrt[to_]
+          self.graph_norms = norm
+        
+          if config['e_attr_mode'] == 'exp' and edge_attrs != None:  
+            self.edge_attrs = torch.exp(scale * edge_attrs)
           elif config['e_attr_mode'] == 'smax' and edge_attrs != None:
-            self.edge_attrs = softmax(edge_attrs, edge_index[1])
+            self.edge_attrs = softmax(edge_attrs, to_) # sofmax over all edges from the source nodes to the target nodes
+            norm = norm = deg_inv_sqrt[from_] # only normalize the source nodes
+            self.graph_norms = norm
           elif config['e_attr_mode'] == 'raw' and edge_attrs != None:
             self.edge_attrs = edge_attrs
           elif config['e_attr_mode'] == 'none' and edge_attrs != None:
@@ -106,11 +112,9 @@ class hyperGAT(MessagePassing):
         # Start propagating messages (no update after aggregation)
         return self.propagate(edge_index, x=x, norm=self.graph_norms, attr = self.edge_attrs)
 
-    def message(self, x_j, norm, attr):      
+    def message(self, x_j, norm, attr):
         # Attended message passing      
         if attr != None:
-            #return (x_j * attr.view(-1, 1))
-            #return F.leaky_relu((x_j * attr.view(-1, 1)))
             return norm.view(-1, 1) * (x_j * attr.view(-1, 1))
         else:
             return norm.view(-1, 1) * x_j
@@ -268,6 +272,10 @@ class RecSysGNN(nn.Module):
       self.convs = nn.ModuleList(hyperGAT(edge_attr_mode=edge_attr_mode, attr_drop=attr_drop, self_loop=self_loop, device=device) for _ in range(self.n_layers))
     else:
       raise ValueError('Model must be NGCF, LightGCN or hyperGCN or hyperGAT')
+    
+    # Attention mechanism for aggregation
+    self.attention_weights = nn.Parameter(torch.ones(self.n_layers + 1, dtype=torch.float32))
+    self.softmax = nn.Softmax(dim=0)
 
     self.init_parameters()
 
@@ -288,10 +296,15 @@ class RecSysGNN(nn.Module):
       emb = conv(x=emb, edge_index=edge_index, edge_attrs=edge_attrs, scale = self.scale)
       embs.append(emb)
       
-    out = (
-      torch.cat(embs, dim=-1) if self.model == 'NGCF' 
-      else torch.mean(torch.stack(embs, dim=0), dim=0)
-    )
+    
+    if self.model == 'NGCF':
+      out = torch.cat(embs, dim=-1)
+    else:
+      #out = torch.mean(torch.stack(embs, dim=0), dim=0)
+      # Compute attention scores
+      attention_scores = self.softmax(self.attention_weights)
+      out = torch.stack(embs, dim=0)  # Shape: [n_layers+1, num_nodes, emb_dim]
+      out = torch.sum(out * attention_scores[:, None, None], dim=0)  # Weighted sum
         
     return emb0, out
 

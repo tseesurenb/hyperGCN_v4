@@ -89,9 +89,6 @@ def encode_ids(train_df: pd.DataFrame, test_df: pd.DataFrame) -> tuple:
     return train_df, test_df
 
 def get_metrics(user_Embed_wts, item_Embed_wts, test_df, K, interactions_t, device, batch_size=100):
-
-    #if device == 'mps':
-    #    device = torch.device("cpu")
     
     # Ensure embeddings are on the correct device
     user_Embed_wts = user_Embed_wts.to(device)
