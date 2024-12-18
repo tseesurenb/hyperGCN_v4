@@ -15,7 +15,7 @@ from torch_geometric.utils import degree
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
 from world import config
 from torch_geometric.utils import softmax
-
+import sys
 
 def edge_attr_drop(edge_index, edge_attr, modify_prob=0.2, mode=1):
 
@@ -300,11 +300,17 @@ class RecSysGNN(nn.Module):
     if self.model == 'NGCF':
       out = torch.cat(embs, dim=-1)
     else:
-      out = torch.mean(torch.stack(embs, dim=0), dim=0)
+      #out = torch.mean(torch.stack(embs, dim=0), dim=0)
       # Compute attention scores
-      #attention_scores = self.softmax(self.attention_weights)
-      #out = torch.stack(embs, dim=0)  # Shape: [n_layers+1, num_nodes, emb_dim]
-      #out = torch.sum(out * attention_scores[:, None, None], dim=0)  # Weighted sum
+      attention_scores = self.softmax(self.attention_weights)
+      out = torch.stack(embs, dim=0)  # Shape: [n_layers+1, num_nodes, emb_dim]
+      print('before out:', out)
+      out = torch.sum(out * attention_scores[:, None, None], dim=0)  # Weighted sum
+      
+      print('Attention scores:', attention_scores)
+      print('after out:', out)
+      
+      sys.exit()
         
     return emb0, out
 
