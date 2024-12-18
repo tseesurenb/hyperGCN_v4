@@ -274,7 +274,7 @@ class RecSysGNN(nn.Module):
       raise ValueError('Model must be NGCF, LightGCN or hyperGCN or hyperGAT')
     
     # Attention mechanism for aggregation
-    self.attention_weights = nn.Parameter(torch.ones(self.n_layers, dtype=torch.float32))
+    self.attention_weights = nn.Parameter(torch.ones(self.n_layers + 1, dtype=torch.float32))
     self.softmax = nn.Softmax(dim=0)
 
     self.init_parameters()
@@ -305,7 +305,7 @@ class RecSysGNN(nn.Module):
       attention_scores = self.softmax(self.attention_weights)
       out = torch.stack(embs, dim=0)  # Shape: [n_layers+1, num_nodes, emb_dim]
       #print('\nbefore out:\n', out)
-      out = torch.sum(out * attention_scores[:, None], dim=0)  # Weighted sum
+      out = torch.sum(out * attention_scores[:, None, None], dim=0)  # Weighted sum
       
       #print('Attention scores:', attention_scores)
       #print('\nafter out:\n', out)
