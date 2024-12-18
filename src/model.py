@@ -300,11 +300,11 @@ class RecSysGNN(nn.Module):
     if self.model == 'NGCF':
       out = torch.cat(embs, dim=-1)
     else:
-      #out = torch.mean(torch.stack(embs, dim=0), dim=0)
+      out = torch.mean(torch.stack(embs, dim=0), dim=0)
       # Compute attention scores
-      attention_scores = self.softmax(self.attention_weights)
-      out = torch.stack(embs, dim=0)  # Shape: [n_layers+1, num_nodes, emb_dim]
-      out = torch.sum(out * attention_scores[:, None, None], dim=0)  # Weighted sum
+      #attention_scores = self.softmax(self.attention_weights)
+      #out = torch.stack(embs, dim=0)  # Shape: [n_layers+1, num_nodes, emb_dim]
+      #out = torch.sum(out * attention_scores[:, None, None], dim=0)  # Weighted sum
         
     return emb0, out
 
