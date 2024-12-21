@@ -13,6 +13,7 @@ import sys
 
 from world import config
 from scipy.sparse import coo_matrix, vstack, hstack, load_npz, save_npz
+import feature_sim as fs
 
 #import dask.dataframe as dd
 
@@ -126,6 +127,87 @@ def create_uuii_adjmat(df, verbose=-1):
     del user_item_matrix_coo, user_item_matrix, user_user_sim_matrix, item_item_sim_matrix, cos_user_user_sim_matrix, jac_user_user_sim_matrix, cos_item_item_sim_matrix, jac_item_item_sim_matrix
 
     return combined_adjacency, item_sim_dict
+
+import os
+from scipy.sparse import coo_matrix, vstack, hstack, save_npz, load_npz
+
+def create_uuii_adjmat2(df, verbose=-1):
+    """
+    Creates a combined user-user, item-item adjacency matrix (UU+II).
+
+    Args:
+        df (pd.DataFrame): User-item interaction data containing 'user_id' and 'item_id'.
+        config (dict): Configuration dictionary with parameters for similarity calculation.
+        verbose (int): Verbosity level for logging.
+
+    Returns:
+        scipy.sparse.coo_matrix: Combined adjacency matrix.
+        dict: Item similarity dictionary.
+    """
+    # Configuration parameters
+    u_sim = config['u_sim']
+    i_sim = config['i_sim']
+    u_top_k = config['u_K']
+    i_top_k = config['i_K']
+    self_loop = config['self_loop']
+    
+
+    if verbose > 0:
+        print('Creating a user-item matrix...')
+    
+    # Convert to NumPy arrays
+    user_ids = df['user_id'].to_numpy()
+    item_ids = df['item_id'].to_numpy()
+
+    # Create a sparse user-item interaction matrix
+    user_item_matrix_coo = coo_matrix((np.ones(len(df)), (user_ids, item_ids)))
+    user_item_matrix = user_item_matrix_coo.toarray()
+
+    if verbose > 0:
+        print('User-item matrix created.')
+
+    users_path = 'data/ml-100k/u.user'
+    movies_path = 'data/ml-100k/u.item'
+    # Generate user-user similarity matrix using external `create_user_sim`
+    if u_sim == 'cos':
+        user_user_sim_matrix = fs.create_user_sim(users_path, top_k=u_top_k)
+    else:
+        print(f'{u_sim} similarity metric for users is not implemented in this function.')
+
+    # Generate item-item similarity matrix using external `create_item_sim`
+    if i_sim == 'cos':
+        item_item_sim_matrix = fs.create_item_sim(movies_path, top_k=i_top_k)
+    else:
+        print(f'{i_sim} similarity metric for items is not implemented in this function.')
+
+    if verbose > 0:
+        print('User-user and item-item similarity matrices created.')
+
+    # Stack user-user and item-item matrices vertically and horizontally
+    num_users = user_user_sim_matrix.shape[0]
+    num_items = item_item_sim_matrix.shape[0]
+
+    # Combine similarity matrices into an adjacency matrix
+    combined_adjacency = vstack([
+        hstack([coo_matrix(user_user_sim_matrix), coo_matrix((num_users, num_items))]),
+        hstack([coo_matrix((num_items, num_users)), coo_matrix(item_item_sim_matrix)])
+    ])
+
+
+    # Generate item similarity dictionary for additional usage
+    item_sim_dict = {
+        i: {
+            j: item_item_sim_matrix[i, j]
+            for j in range(item_item_sim_matrix.shape[1])
+            if item_item_sim_matrix[i, j] > 0
+        }
+        for i in range(item_item_sim_matrix.shape[0])
+    }
+
+    del user_item_matrix_coo, user_item_matrix, user_user_sim_matrix, item_item_sim_matrix
+
+    return combined_adjacency, item_sim_dict
+
 
 def create_item_similarity_dict(item_item_sim_matrix, verbose=0):
     # Convert sparse matrix to COO format to easily access non-zero elements
