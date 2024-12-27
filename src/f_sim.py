@@ -301,11 +301,11 @@ def show_sim2(sim_matrix, u_id, max_k=10):
     plt.title("Similarity Matrix")
     plt.show()
 
-movies_path = 'data/ml-100k/u.item'
+# movies_path = 'data/ml-100k/u.item'
 
-item_sim = create_item_sim(movies_path, top_k=-1)
-count_sim(item_sim)
-show_sim2(item_sim, 0, 50)
+# item_sim = create_item_sim(movies_path, top_k=-1)
+# count_sim(item_sim)
+# show_sim2(item_sim, 0, 50)
 
 # users_path = 'data/ml-100k/u.user'
 

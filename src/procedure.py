@@ -12,9 +12,7 @@ import utils as ut
 from tqdm import tqdm
 from model import RecSysGNN, get_all_predictions
 from world import config
-from data_prep import get_edge_index, create_uuii_adjmat, create_uuii_adjmat2, sum_common_entries
-import time
-import sys
+from data_prep import get_edge_index, create_uuii_adjmat
 
 #import torch._dynamo
 #torch._dynamo.config.suppress_errors = True
