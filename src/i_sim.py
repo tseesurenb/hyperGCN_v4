@@ -39,7 +39,7 @@ def jaccard_sim(matrix, top_k=20, self_loop=False, verbose=-1):
     # Compute Jaccard similarity
     similarity_matrix = np.divide(intersection, union, out=np.zeros_like(intersection, dtype=np.float32), where=union != 0)
 
-    full_similarity_matrix = similarity_matrix.copy()  # Keep the full similarity matrix
+    #full_similarity_matrix = similarity_matrix.copy()  # Keep the full similarity matrix
     
     # If self_loop is False, set the diagonal to zero
     if self_loop:
@@ -77,7 +77,7 @@ def jaccard_sim(matrix, top_k=20, self_loop=False, verbose=-1):
     
     del binary_matrix, intersection, row_sums, union, similarity_matrix, filtered_data, filtered_rows, filtered_cols
     
-    return filtered_similarity_matrix.tocsr(), csr_matrix(full_similarity_matrix)
+    return filtered_similarity_matrix.tocsr() #, csr_matrix(full_similarity_matrix)
 
 def cosine_sim(matrix, top_k=20, self_loop=False, verbose=-1):
     
@@ -85,9 +85,8 @@ def cosine_sim(matrix, top_k=20, self_loop=False, verbose=-1):
         print('Computing cosine similarity by top-k...')
     
     # Convert the binary matrix to a sparse matrix (CSR format)
-    sparse_matrix = csr_matrix(matrix)
-
     # Convert the sparse matrix to a binary sparse matrix
+    sparse_matrix = csr_matrix(matrix)
     sparse_matrix.data = (sparse_matrix.data > 0).astype(int)
 
     # Compute sparse cosine similarity (output will be sparse)
@@ -102,7 +101,7 @@ def cosine_sim(matrix, top_k=20, self_loop=False, verbose=-1):
     else:
         similarity_matrix.setdiag(0)
     
-    full_similarity_matrix = similarity_matrix.copy()   # Keep the full similarity matrix
+    #full_similarity_matrix = similarity_matrix.copy()   # Keep the full similarity matrix
     
     # Prepare to filter top K values
     filtered_data = []
@@ -142,7 +141,7 @@ def cosine_sim(matrix, top_k=20, self_loop=False, verbose=-1):
     del sparse_matrix, similarity_matrix
     del filtered_data, filtered_rows, filtered_cols
     
-    return filtered_similarity_matrix.tocsr(), full_similarity_matrix
+    return filtered_similarity_matrix.tocsr()
 
 
 def pearson_sim(matrix, top_k=20, threshold = 0.0, self_loop=False, verbose=-1):
@@ -172,7 +171,7 @@ def pearson_sim(matrix, top_k=20, threshold = 0.0, self_loop=False, verbose=-1):
     else:
         similarity_matrix.setdiag(0)
     
-    full_similarity_matrix = similarity_matrix.copy()  # Keep the full similarity matrix
+    #full_similarity_matrix = similarity_matrix.copy()  # Keep the full similarity matrix
     
     # Prepare to filter top K values
     filtered_data = []
@@ -217,4 +216,4 @@ def pearson_sim(matrix, top_k=20, threshold = 0.0, self_loop=False, verbose=-1):
     del sparse_matrix, similarity_matrix
     del filtered_data, filtered_rows, filtered_cols
     
-    return filtered_similarity_matrix.tocsr(), full_similarity_matrix
+    return filtered_similarity_matrix.tocsr() #, full_similarity_matrix

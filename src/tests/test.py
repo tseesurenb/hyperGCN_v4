@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.sparse import csr_matrix
 from sklearn.metrics.pairwise import cosine_similarity
-from similarity_func import jaccard_sim
+from i_sim import jaccard_sim
 
 # Create a dense binary matrix 5 users and 6 items, each row represents a user's interaction with items
 dense_matrix = np.array([

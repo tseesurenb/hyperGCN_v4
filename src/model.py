@@ -97,7 +97,7 @@ class hyperGAT(MessagePassing):
             self.edge_attrs = torch.exp(scale * edge_attrs)
           elif config['e_attr_mode'] == 'smax' and edge_attrs != None:
             self.edge_attrs = softmax(edge_attrs, to_) # sofmax over all edges from the source nodes to the target nodes
-            norm = norm = deg_inv_sqrt[from_] # only normalize the source nodes
+            norm = deg_inv_sqrt[from_] # only normalize the source nodes
             self.graph_norms = norm
           elif config['e_attr_mode'] == 'raw' and edge_attrs != None:
             self.edge_attrs = edge_attrs

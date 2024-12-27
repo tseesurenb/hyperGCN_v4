@@ -7,7 +7,7 @@ import sys
 import os
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from similarity_func import cosine_similarity_by_top_k_new as cosine_similarity_by_top_k
+from i_sim import cosine_similarity_by_top_k_new as cosine_similarity_by_top_k
 
 # Assuming your cosine_similarity_by_top_k function is already defined
 
