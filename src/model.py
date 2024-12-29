@@ -120,10 +120,10 @@ class hyperGAT(MessagePassing):
 
     def message(self, x_j, norm, attr):
         # Attended message passing      
-        if attr != None:
-            return norm.view(-1, 1) * (x_j * attr.view(-1, 1))
-        else:
-            return norm.view(-1, 1) * x_j
+        #if attr != None:
+        #    return norm.view(-1, 1) * (x_j * attr.view(-1, 1))
+        #else:
+        return norm.view(-1, 1) * x_j
           
 
 # NGCF Convolutional Layer
