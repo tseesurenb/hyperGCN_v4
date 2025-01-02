@@ -71,6 +71,33 @@ class hyperGCN(MessagePassing):
           
 # HyperGCN Convolutional Layer
 class hyperGAT(MessagePassing):
+    def __init__(self, self_loop = False, device = 'cpu', **kwargs):  
+        super().__init__(aggr='add')
+        
+        self.graph_norms = None
+        self.edge_attrs = None
+        self.add_self_loops = self_loop
+        
+    def forward(self, x, edge_index, edge_attrs):
+        
+        if self.graph_norms is None:
+          
+          from_, to_ = edge_index      
+          incoming_norm = softmax(edge_attrs, to_)
+          outgoing_norm = softmax(edge_attrs, from_)
+          norm = torch.sqrt(incoming_norm * outgoing_norm)
+          
+          self.graph_norms = norm
+                    
+        # Start propagating messages (no update after aggregation)
+        return self.propagate(edge_index, x=x, norm=self.graph_norms)
+
+    def message(self, x_j, norm):
+        return norm.view(-1, 1) * x_j
+
+
+# HyperGCN Convolutional Layer
+class hyperGAT_old(MessagePassing):
     def __init__(self, edge_attr_mode = 'exp', attr_drop = 0.0, self_loop = False, device = 'cpu', **kwargs):  
         super().__init__(aggr='add')
         
@@ -246,9 +273,6 @@ class RecSysGNN(nn.Module):
       n_items,
       model, # 'NGCF' or 'LightGCN' or 'hyperGCN'
       dropout=0.1, # Only used in NGCF
-      attr_drop = 0.0, # Only used in hyperGCN
-      edge_attr_mode = None,
-      scale = 1.0,
       device = 'cpu',
       self_loop = False
   ):
@@ -260,29 +284,18 @@ class RecSysGNN(nn.Module):
     self.n_items = n_items
     self.n_layers = n_layers
     self.emb_dim = emb_dim
-    
-    # Initialize scale parameters for users and items
-    self.scale = nn.Parameter(torch.tensor(scale, dtype=torch.float32))
-  
+      
     self.embedding = nn.Embedding(self.n_users + self.n_items, self.emb_dim, dtype=torch.float32)
         
     if self.model == 'NGCF':
       self.convs = nn.ModuleList(NGCFConv(self.emb_dim, dropout=dropout) for _ in range(self.n_layers))
-    elif self.model == 'hyperNGCF':
-      self.convs = nn.ModuleList(hyperNGCF(self.emb_dim, dropout=dropout, edge_attr_mode=edge_attr_mode) for _ in range(self.n_layers))
     elif self.model == 'lightGCN':
       self.convs = nn.ModuleList(lightGCN() for _ in range(self.n_layers))
-    elif self.model == 'hyperGCN':
-      self.convs = nn.ModuleList(hyperGCN(edge_attr_mode=edge_attr_mode, attr_drop=attr_drop, self_loop=self_loop) for _ in range(self.n_layers))
     elif self.model == 'hyperGAT':
-      self.convs = nn.ModuleList(hyperGAT(edge_attr_mode=edge_attr_mode, attr_drop=attr_drop, self_loop=self_loop, device=device) for _ in range(self.n_layers))
+      self.convs = nn.ModuleList(hyperGAT(self_loop=self_loop, device=device) for _ in range(self.n_layers))
     else:
-      raise ValueError('Model must be NGCF, LightGCN or hyperGCN or hyperGAT')
+      raise ValueError('Model must be NGCF, LightGCN or hyperGAT')
     
-    # Attention mechanism for aggregation
-    self.attention_weights = nn.Parameter(torch.ones(self.n_layers + 1, dtype=torch.float32))
-    self.softmax = nn.Softmax(dim=0)
-
     self.init_parameters()
 
   def init_parameters(self):
@@ -299,7 +312,7 @@ class RecSysGNN(nn.Module):
      
     emb = emb0
     for conv in self.convs:
-      emb = conv(x=emb, edge_index=edge_index, edge_attrs=edge_attrs, scale = self.scale)
+      emb = conv(x=emb, edge_index=edge_index, edge_attrs=edge_attrs)
       embs.append(emb)
       
     
@@ -307,16 +320,6 @@ class RecSysGNN(nn.Module):
       out = torch.cat(embs, dim=-1)
     else:
       out = torch.mean(torch.stack(embs, dim=0), dim=0)
-      # Compute attention scores
-      #attention_scores = self.softmax(self.attention_weights)
-      #out = torch.stack(embs, dim=0)  # Shape: [n_layers+1, num_nodes, emb_dim]
-      #print('\nbefore out:\n', out)
-      #out = torch.sum(out * attention_scores[:, None, None], dim=0)  # Weighted sum
-      
-      #print('Attention scores:', attention_scores)
-      #print('\nafter out:\n', out)
-      
-      #sys.exit()
         
     return emb0, out
 

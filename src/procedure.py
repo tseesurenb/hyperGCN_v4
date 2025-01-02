@@ -201,10 +201,7 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
                          emb_dim=config['emb_dim'],  
                          n_layers=config['layers'], 
                          n_users=N_USERS, 
-                         n_items=N_ITEMS, 
-                         edge_attr_mode = config['e_attr_mode'], 
-                         attr_drop=config['e_attr_drop'],
-                         scale=config['scale'],
+                         n_items=N_ITEMS,
                          self_loop=config['self_loop'],
                          device = device).to(device)
     
