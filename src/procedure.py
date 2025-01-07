@@ -127,7 +127,7 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
                 max_prec = prec
                 max_epoch = epoch
             
-            pbar.set_postfix_str(f"prec {br}{prec:.4f}{rs} | recall {br}{recall:.4f}{rs} | ncdg {br}{ncdg:.4f} ({max_ncdg:.4f}, {max_recall:.4f}, {max_prec:.4f}, {model.scale.item():.4f} at {max_epoch}) {rs}")
+            pbar.set_postfix_str(f"prec {br}{prec:.4f}{rs} | recall {br}{recall:.4f}{rs} | ncdg {br}{ncdg:.4f} ({max_ncdg:.4f}, {max_recall:.4f}, {max_prec:.4f} at {max_epoch}) {rs}")
             pbar.refresh()
                                 
         model.train()
@@ -168,7 +168,7 @@ def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', ve
         print(f"dataset: {br}{config['dataset']} {rs}| seed: {g_seed} | exp: {exp_n} | device: {device}")
         print(f"{br}Trainset{rs} | #users: {N_USERS}, #items: {N_ITEMS}, #interactions: {len(_train_df)}")
         print(f" {br}Testset{rs} | #users: {_test_df['user_id'].nunique()}, #items: {_test_df['item_id'].nunique()}, #interactions: {len(_test_df)}")
-        print(f" {br}Dropout{rs} | drop-rate: {config['e_attr_drop']}, drop-mode: {config['drop_mode']}")
+        #print(f" {br}Dropout{rs} | drop-rate: {config['e_attr_drop']}, drop-mode: {config['drop_mode']}")
       
     adj_list = ut.make_adj_list(_train_df) # adj_list is a user dictionary with a list of positive items (pos_items) and negative items (neg_items)
      
