@@ -110,17 +110,6 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
                 final_u_emb, final_i_emb = torch.split(out, (n_users, n_items))
                 recall,  prec, ncdg = ut.get_metrics(final_u_emb, final_i_emb, test_df, topK, interactions_t, device)
             
-            f1 = (2 * recall * prec / (recall + prec)) if (recall + prec) != 0 else 0.0
-                
-            losses['bpr_loss'].append(round(np.mean(bpr_losses), 4) if bpr_losses else np.nan)
-            losses['reg_loss'].append(round(np.mean(reg_losses), 4) if reg_losses else np.nan)
-            losses['total_loss'].append(round(np.mean(total_losses), 4) if total_losses else np.nan)
-            
-            metrics['recall'].append(round(recall,4))
-            metrics['precision'].append(round(prec,4))
-            metrics['f1'].append(round(f1,4))
-            metrics['ncdg'].append(round(ncdg,4))
-            
             if ncdg > max_ncdg:
                 max_ncdg = ncdg
                 max_recall = recall
@@ -149,7 +138,18 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
             
             # Update the description of the outer progress bar with batch information
             pbar.set_description(f"{config['model']}({g_seed:2}) | #ed {len(edge_index[0]):6} | ep({epochs}) {epoch} | ba({n_batches}) {b_i:3} | loss {total_loss.detach().item():.4f}")
-            
+        
+        f1 = (2 * recall * prec / (recall + prec)) if (recall + prec) != 0 else 0.0
+        
+        metrics['recall'].append(round(recall,4))
+        metrics['precision'].append(round(prec,4))
+        metrics['f1'].append(round(f1,4))
+        metrics['ncdg'].append(round(ncdg,4))
+        
+        losses['bpr_loss'].append(round(np.mean(bpr_losses), 4) if bpr_losses else np.nan)
+        losses['reg_loss'].append(round(np.mean(reg_losses), 4) if reg_losses else np.nan)
+        losses['total_loss'].append(round(np.mean(total_losses), 4) if total_losses else np.nan)
+        
     return (losses, metrics)
 
 def exec_exp(orig_train_df, orig_test_df, exp_n = 1, g_seed=42, device='cpu', verbose = -1):

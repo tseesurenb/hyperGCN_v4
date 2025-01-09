@@ -81,5 +81,15 @@ print_metrics(recalls, precs, f1s, ncdg, max(max_indices), stats=dataset_stats)
 
 plot_save_dir = f"{plot_dir}/{file_name}"
 
+print("All losses info:\n")
+print(all_losses[0].keys(), len(all_losses[0]['total_loss']))
+print("top 5 values of total_loss")
+print(all_losses[0]['total_loss'][:5])
+print("top 5 values of bpr_loss")
+print(all_losses[0]['bpr_loss'][:5])
+print("top 5 values of reg_loss")
+print(all_losses[0]['reg_loss'][:5])
+
+
 plot_results(plot_save_dir, exp_n, all_losses, all_metrics)
 

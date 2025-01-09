@@ -247,7 +247,7 @@ class lightGCN(MessagePassing):
         
         self.norm = None
             
-    def forward(self, x, edge_index, edge_attrs, scale):
+    def forward(self, x, edge_index, edge_attrs):
       
         if self.norm is None:
           # Compute normalization

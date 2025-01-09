@@ -446,7 +446,9 @@ def plot_results(plot_name, num_exp, all_losses, all_metrics):
     # Get current date and time
     now = datetime.now()
 
-    # Format date and time as desired (e.g., "2024-08-27_14-30-00")
-    timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-
-    plt.savefig(plot_name + '_' + timestamp +'.png')  # Save plot to file
+    if plot_name != None:
+        # Format date and time as desired (e.g., "2024-08-27_14-30-00")
+        timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+        plt.savefig(plot_name + '_' + timestamp +'.png')  # Save plot to file
+    else:
+        plt.show()
