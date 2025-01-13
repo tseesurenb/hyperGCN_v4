@@ -86,8 +86,13 @@ class hyperGAT(MessagePassing):
           incoming_norm = softmax(edge_attrs, to_)
           outgoing_norm = softmax(edge_attrs, from_)
           
-          norm = torch.sqrt(incoming_norm * outgoing_norm)
-          
+          if config['abls'] == -1:
+            norm = outgoing_norm
+          elif config['abls'] == 1:
+            norm = incoming_norm
+          else:
+            norm = torch.sqrt(incoming_norm * outgoing_norm)
+            
           self.graph_norms = norm
                     
         # Start propagating messages (no update after aggregation)
