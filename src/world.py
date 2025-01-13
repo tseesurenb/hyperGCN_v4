@@ -26,6 +26,7 @@ config['i_sim'] = args.i_sim
 config['edge'] = args.edge
 config['i_K'] = args.i_K
 config['u_K'] = args.u_K
+config['abls'] = args.abls
 config['self_loop'] = bool(args.self_loop)
 config['shuffle'] = args.shuffle
 config['weighted_neg_sampling'] = args.weighted_neg_sampling

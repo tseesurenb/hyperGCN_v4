@@ -85,6 +85,7 @@ class hyperGAT(MessagePassing):
           from_, to_ = edge_index      
           incoming_norm = softmax(edge_attrs, to_)
           outgoing_norm = softmax(edge_attrs, from_)
+          
           norm = torch.sqrt(incoming_norm * outgoing_norm)
           
           self.graph_norms = norm

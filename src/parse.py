@@ -25,6 +25,7 @@ def parse_args():
     parser.add_argument('--edge', type=str, default='knn')
     parser.add_argument('--u_K', type=int, default=20)
     parser.add_argument('--i_K', type=int, default=20)
+    parser.add_argument('--abls', type=int, default=0)
     parser.add_argument('--self_loop', type=bool, default=False)
     parser.add_argument('--shuffle', type=bool, default=False)
     parser.add_argument('--weighted_neg_sampling', type=bool, default=False)

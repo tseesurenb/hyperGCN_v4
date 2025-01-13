@@ -16,7 +16,13 @@ def plot_results(plot_name, file_names):
         epoch_list = [(j + 1) for j in range(num_test_epochs)]
 
         for i in range(num_exp):
-            label_suffix = f"File {file_idx + 1}, Exp {i + 1}"
+            
+            if file_idx == 0:
+                label_suffix = f"LightGCN"
+            elif file_idx == 1:
+                label_suffix = f"HyperGAT-I"
+            else:
+                label_suffix = f"HyperGAT-F"
 
             # Plot losses
             plt.subplot(2, 3, 1)
@@ -26,6 +32,7 @@ def plot_results(plot_name, file_names):
             plt.xlabel('Epoch')
             plt.ylabel('Loss')
             plt.title('Training Losses')
+            plt.ylim(ymax=0.5)  # Set minimum y-axis value to 0.15
             plt.legend()
 
             # Plot Recall and Precision
@@ -35,6 +42,7 @@ def plot_results(plot_name, file_names):
             plt.xlabel('Epoch')
             plt.ylabel('Recall & Precision')
             plt.title('Recall & Precision')
+            plt.ylim(ymin=0.15)  # Set minimum y-axis value to 0.15
             plt.legend()
 
             # Plot NDCG
@@ -43,6 +51,7 @@ def plot_results(plot_name, file_names):
             plt.xlabel('Epoch')
             plt.ylabel('NCDG')
             plt.title('NDCG')
+            plt.ylim(ymin=0.2)  # Set minimum y-axis value to 0.15
             plt.legend()
 
     plt.tight_layout()  # Adjust spacing between subplots
@@ -59,15 +68,15 @@ res_dir = "models/results"
 
 exp_n = 2
 
-file_name1 = "lightGCN_cpu_2020_ml-100k_1024__3_1001_bi"
-file_name2 = "hyperGAT_cpu_2020_ml-100k_1024__3_1001_knn"
+file_name1 = "lightGCN_cuda_2020_ml-100k_1024__3_1001_bi"
+file_name2 = "hyperGAT_cuda_2020_ml-100k_1024__3_1001_knn"
 file_name3 = "hyperGAT_cuda_2020_ml-100k_1024__3_1001_knn_f"
 
 # Construct file paths for each experiment
 file_paths = [
-    #(f"{res_dir}/{file_name1}_all_losses.npy", f"{res_dir}/{file_name1}_all_metrics.npy")
-    (f"{res_dir}/{file_name2}_all_losses.npy", f"{res_dir}/{file_name2}_all_metrics.npy")
-    #(f"{res_dir}/{file_name3}_all_losses.npy", f"{res_dir}/{file_name3}_all_metrics.npy")
+    (f"{res_dir}/{file_name1}_all_losses.npy", f"{res_dir}/{file_name1}_all_metrics.npy"),
+    (f"{res_dir}/{file_name2}_all_losses.npy", f"{res_dir}/{file_name2}_all_metrics.npy"),
+    (f"{res_dir}/{file_name3}_all_losses.npy", f"{res_dir}/{file_name3}_all_metrics.npy")
 ]
 
 # Plot and save the results
