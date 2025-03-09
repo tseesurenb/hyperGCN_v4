@@ -84,7 +84,6 @@ def cosine_sim(matrix, top_k=20, self_loop=False, verbose=-1):
     if verbose > 0:
         print('Computing cosine similarity by top-k...')
     
-    # Convert the binary matrix to a sparse matrix (CSR format)
     # Convert the sparse matrix to a binary sparse matrix
     sparse_matrix = csr_matrix(matrix)
     sparse_matrix.data = (sparse_matrix.data > 0).astype(int)
@@ -100,8 +99,6 @@ def cosine_sim(matrix, top_k=20, self_loop=False, verbose=-1):
         similarity_matrix.setdiag(1)
     else:
         similarity_matrix.setdiag(0)
-    
-    #full_similarity_matrix = similarity_matrix.copy()   # Keep the full similarity matrix
     
     # Prepare to filter top K values
     filtered_data = []

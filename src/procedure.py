@@ -26,7 +26,7 @@ bg = "\033[1;32m"
 bb = "\033[1;34m"
 rs = "\033[0m"
  
-def compute_bpr_loss(users, users_emb, pos_emb, neg_emb, user_emb0, pos_emb0, neg_emb0):
+def compute_bpr_loss_simple(users, users_emb, pos_emb, neg_emb, user_emb0, pos_emb0, neg_emb0):
     
     if config['samples'] == 1:
         neg_reg_loss = neg_emb0.norm(2).pow(2)
@@ -52,6 +52,36 @@ def compute_bpr_loss(users, users_emb, pos_emb, neg_emb, user_emb0, pos_emb0, ne
         bpr_loss = torch.mean(F.softplus(neg_scores - pos_scores.unsqueeze(1)))  # Using softplus for stability
         
     return bpr_loss, reg_loss
+
+def compute_bpr_loss(users, users_emb, pos_emb, neg_emb, 
+                                 user_emb0, pos_emb0, neg_emb0, 
+                                 temperature=0.1, lambda_contrastive=0.05):
+    
+    # Compute BPR loss (ranking)
+    reg_loss = (1 / 2) * (
+        user_emb0.norm(2).pow(2) + 
+        pos_emb0.norm(2).pow(2)  +
+        neg_emb0.norm(2).pow(2)
+    ) / float(len(users))
+    
+    pos_scores = torch.mul(users_emb, pos_emb).sum(dim=1)  # Positive interactions
+    neg_scores = torch.mul(users_emb, neg_emb).sum(dim=1)  # Negative interactions
+    
+    bpr_loss = torch.mean(F.softplus(neg_scores - pos_scores))  # BPR loss
+    
+    # Compute Contrastive Loss (InfoNCE)
+    pos_sim = F.cosine_similarity(users_emb, pos_emb) / temperature  # Positive pair similarity
+    neg_sim = F.cosine_similarity(users_emb, neg_emb) / temperature  # Negative pair similarity
+    
+    # Contrastive loss using InfoNCE (pull positives, push negatives)
+    contrastive_loss = -torch.mean(torch.log(
+        torch.exp(pos_sim) / (torch.exp(pos_sim) + torch.exp(neg_sim))
+    ))
+    
+    # Final loss = BPR Loss + Contrastive Loss (weighted by λ)
+    #total_loss = bpr_loss + lambda_contrastive * contrastive_loss
+    
+    return bpr_loss, reg_loss, contrastive_loss
 
 def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, adj_list, device, exp_n, g_seed):
    
@@ -123,10 +153,13 @@ def train_and_eval(model, optimizer, train_df, test_df, edge_index, edge_attrs, 
         for (b_i, (b_users, b_pos, b_neg)) in enumerate(ut.minibatch(users, pos_items, neg_items, batch_size=b_size)):
                                      
             u_emb, pos_emb, neg_emb, u_emb0,  pos_emb0, neg_emb0 = model.encode_minibatch(b_users, b_pos, b_neg, edge_index, edge_attrs)
-            bpr_loss, reg_loss = compute_bpr_loss(b_users, u_emb, pos_emb, neg_emb, u_emb0,  pos_emb0, neg_emb0)
+            bpr_loss, reg_loss, contrast_loss = compute_bpr_loss(b_users, u_emb, pos_emb, neg_emb, u_emb0,  pos_emb0, neg_emb0)
             
             reg_loss = decay * reg_loss
-            total_loss = bpr_loss + reg_loss
+            #total_loss = bpr_loss + reg_loss
+            
+            lambda_contrastive = 0.05
+            total_loss = bpr_loss + reg_loss + lambda_contrastive * contrast_loss
             
             optimizer.zero_grad()
             total_loss.backward()

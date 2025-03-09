@@ -69,37 +69,7 @@ class hyperGCN(MessagePassing):
             return norm.view(-1, 1) * x_j
           
           
-# HyperGCN Convolutional Layer
-class hyperGAT(MessagePassing):
-    def __init__(self, self_loop = False, device = 'cpu', **kwargs):  
-        super().__init__(aggr='add')
-        
-        self.graph_norms = None
-        self.edge_attrs = None
-        self.add_self_loops = self_loop
-        
-    def forward(self, x, edge_index, edge_attrs):
-        
-        if self.graph_norms is None:
-          
-          from_, to_ = edge_index      
-          incoming_norm = softmax(edge_attrs, to_)
-          outgoing_norm = softmax(edge_attrs, from_)
-          
-          if config['abls'] == -1:
-            norm = outgoing_norm
-          elif config['abls'] == 1:
-            norm = incoming_norm
-          else:
-            norm = torch.sqrt(incoming_norm * outgoing_norm)
-            
-          self.graph_norms = norm
-                    
-        # Start propagating messages (no update after aggregation)
-        return self.propagate(edge_index, x=x, norm=self.graph_norms)
 
-    def message(self, x_j, norm):
-        return norm.view(-1, 1) * x_j
 
 
 # HyperGCN Convolutional Layer
@@ -269,6 +239,37 @@ class lightGCN(MessagePassing):
     def message(self, x_j, norm):
         return norm.view(-1, 1) * x_j
 
+# HyperGCN Convolutional Layer
+class hyperGAT(MessagePassing):
+    def __init__(self, self_loop = False, device = 'cpu', **kwargs):  
+        super().__init__(aggr='add')
+        
+        self.graph_norms = None
+        self.edge_attrs = None
+        self.add_self_loops = self_loop
+        
+    def forward(self, x, edge_index, edge_attrs):
+        
+        if self.graph_norms is None:
+          
+          from_, to_ = edge_index      
+          incoming_norm = softmax(edge_attrs, to_)
+          outgoing_norm = softmax(edge_attrs, from_)
+          
+          if config['abls'] == -1:
+            norm = outgoing_norm
+          elif config['abls'] == 1:
+            norm = incoming_norm
+          else:
+            norm = torch.sqrt(incoming_norm * outgoing_norm)
+            
+          self.graph_norms = norm
+                    
+        # Start propagating messages (no update after aggregation)
+        return self.propagate(edge_index, x=x, norm=self.graph_norms)
+
+    def message(self, x_j, norm):
+        return norm.view(-1, 1) * x_j
       
 class RecSysGNN(nn.Module):
   def __init__(

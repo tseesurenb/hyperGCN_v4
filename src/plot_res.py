@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 
 def plot_results(plot_name, file_names):
-    plt.figure(figsize=(14, 10))  # Increased figure height for better readability
+    plt.figure(figsize=(14, 6))  # Increased figure height for better readability
     
     # Iterate over the list of files
     for file_idx, file_name in enumerate(file_names):
@@ -20,15 +20,15 @@ def plot_results(plot_name, file_names):
             if file_idx == 0:
                 label_suffix = f"LightGCN"
             elif file_idx == 1:
-                label_suffix = f"HyperGAT-I"
+                label_suffix = f"DySimGCF"
             else:
-                label_suffix = f"HyperGAT-F"
+                label_suffix = r"DySimGCF$^{i}$"
 
             # Plot losses
             plt.subplot(2, 3, 1)
-            plt.plot(epoch_list, all_losses[i]['total_loss'], label=f'{label_suffix} - Total Loss', linestyle='-', alpha=0.7)
-            plt.plot(epoch_list, all_losses[i]['bpr_loss'], label=f'{label_suffix} - BPR Loss', linestyle='--', alpha=0.7)
-            plt.plot(epoch_list, all_losses[i]['reg_loss'], label=f'{label_suffix} - Reg Loss', linestyle='-.', alpha=0.7)
+            plt.plot(epoch_list, all_losses[i]['total_loss'], label=f'{label_suffix}', linestyle='-', alpha=0.7)
+            #plt.plot(epoch_list, all_losses[i]['bpr_loss'], label=f'{label_suffix} - BPR Loss', linestyle='--', alpha=0.7)
+            #plt.plot(epoch_list, all_losses[i]['reg_loss'], label=f'{label_suffix} - Reg Loss', linestyle='-.', alpha=0.7)
             plt.xlabel('Epoch')
             plt.ylabel('Loss')
             plt.title('Training Losses')
@@ -47,7 +47,7 @@ def plot_results(plot_name, file_names):
 
             # Plot NDCG
             plt.subplot(2, 3, 3)
-            plt.plot(epoch_list, all_metrics[i]['ncdg'], label=f'{label_suffix} - NCDG', linestyle='-', alpha=0.7)
+            plt.plot(epoch_list, all_metrics[i]['ncdg'], label=f'{label_suffix}', linestyle='-', alpha=0.7)
             plt.xlabel('Epoch')
             plt.ylabel('NCDG')
             plt.title('NDCG')
